@@ -1,0 +1,28 @@
+name: content-search-ai
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - matplotlib
+  - pandas
+  - tqdm
+  - pillow
+  - torchvision
+  - pytorch
+  - torchaudio
+  - pycocotools
+  - ipykernel
+  - jupyterlab
+  - faiss-cpu
+  - ffmpeg
+  - pip:
+      - ftfy
+      - regex
+      - opencv-python
+      - pygame
+      - git+https://github.com/openai/CLIP.git
+      - openai-whisper
