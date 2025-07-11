@@ -47,24 +47,12 @@ content_retrieval_ai/
     conda activate content-search-ai
     ```
 
-2. Run scripts in order:
-    ```bash
-    python scripts/download_coco_val_images.py
-    python scripts/download_coco_val_captions.py
-    python scripts/extract_image_embeddings.py
-    python scripts/extract_caption_embeddings.py
-    ```
-
-3. Perform search by text:
-    ```bash
-    python scripts/search_by_text.py
-    ```
-
+2. Open core/main.py and at the search_query write what image you wantyt to search like "A Horse at the Beach":
 ---
 
 ## 📅 Project Timeline
 
-- **Phase 1**: Image search (Complete ✅)
+- **Phase 1**: Image search
 - **Phase 2**: Audio indexing & phrase detection (In Progress)
 - **Phase 3**: UI interface and potential video extension
 
