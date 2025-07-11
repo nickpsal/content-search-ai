@@ -12,11 +12,8 @@ content_retrieval_ai/
 │   ├── images/
 │   ├── annotations/
 │   └── embeddings/
-├── models/                # Pretrained or fine-tuned models (e.g., CLIP, Whisper)
-├── notebooks/             # Jupyter notebooks for experimentation
-├── results/               # Output results (retrieved images, evaluation)
-├── scripts/               # Python scripts for processing and searching
-├── utils/                 # Utility functions
+├── core/               # Python scripts for processing and searching
+├── gui/                # tkinter files
 ├── environment.yml        # Conda environment setup
 └── README.md              # Project description and usage
 ```
