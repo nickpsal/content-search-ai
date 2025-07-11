@@ -47,7 +47,7 @@ content_retrieval_ai/
     conda activate content-search-ai
     ```
 
-2. Open core/main.py and at the search_query write what image you wantyt to search like "A Horse at the Beach":
+2. Open core/main.py and at the search_query write what image you want to search like "A Horse at the Beach":
 ---
 
 ## 📅 Project Timeline
