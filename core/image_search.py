@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import torch
 import clip
@@ -10,13 +11,14 @@ import matplotlib.pyplot as plt
 from deep_translator import GoogleTranslator
 
 
-
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
     total = int(response.headers.get('content-length', 0))
     with open(dest_zip, 'wb') as file, tqdm(
-            desc=f"Downloading {os.path.basename(dest_zip)}",
-            total=total, unit='B', unit_scale=True, unit_divisor=1024) as bar:
+        desc=f"Downloading {os.path.basename(dest_zip)}",
+        total=total, unit='B', unit_scale=True, unit_divisor=1024,
+        file=sys.stdout
+    ) as bar:
         for data in response.iter_content(chunk_size=1024):
             file.write(data)
             bar.update(len(data))
@@ -29,7 +31,7 @@ def translate_query(query: str, target_lang="en"):
         return GoogleTranslator(source="auto", target=target_lang).translate(query)
     except Exception as e:
         print(f"⚠️ Translation failed: {e}")
-        return query  # fallback to original
+        return query  # fallback
 
 
 class ImageSearcher:
@@ -43,7 +45,7 @@ class ImageSearcher:
         self.model, self.preprocess = clip.load(model_name, device=self.device)
 
     def download_coco_data(self):
-        # Download captions
+        # Captions
         annotations_dir = os.path.join(self.data_dir, "annotations")
         os.makedirs(annotations_dir, exist_ok=True)
         caption_zip = os.path.join(annotations_dir, "annotations_trainval2017.zip")
@@ -55,7 +57,7 @@ class ImageSearcher:
                 annotations_dir
             )
 
-        # Download images
+        # Images
         images_dir = os.path.join(self.data_dir, "images")
         os.makedirs(images_dir, exist_ok=True)
         image_zip = os.path.join(images_dir, "val2017.zip")
@@ -67,10 +69,9 @@ class ImageSearcher:
                 images_dir
             )
         else:
-            print(f"Images Already exists on {images_dir} folder")
+            print(f"✅ Images already exist in {images_dir}")
 
     def extract_image_embeddings(self, force=False):
-        # Αν υπάρχουν ήδη και δε θέλουμε force, τότε κάνε skip
         if os.path.exists(self.image_embed_path) and not force:
             print(f"✅ Image embeddings already exist at {self.image_embed_path}")
             return
@@ -81,7 +82,7 @@ class ImageSearcher:
 
         print(f"📸 Found {len(image_paths)} images.")
 
-        for path in tqdm(image_paths, desc="Extracting image embeddings"):
+        for path in tqdm(image_paths, desc="Extracting image embeddings", file=sys.stdout):
             try:
                 image = self.preprocess(Image.open(path).convert("RGB")).unsqueeze(0).to(self.device)
                 with torch.no_grad():
@@ -96,22 +97,19 @@ class ImageSearcher:
         print(f"✅ Saved {len(embeddings)} image embeddings to {self.image_embed_path}")
 
     def extract_text_embeddings(self, force=False):
-        # Αν υπάρχουν ήδη και δε θέλουμε force, κάνε skip
         if os.path.exists(self.text_embed_path) and not force:
             print(f"✅ Caption embeddings already exist at {self.text_embed_path}")
             return
 
-        # Φόρτωσε captions από JSON
         with open(self.caption_file, 'r') as f:
             data = json.load(f)
 
         embeddings = {}
 
-        for ann in tqdm(data['annotations'], desc="Extracting caption embeddings"):
+        for ann in tqdm(data['annotations'], desc="Extracting caption embeddings", file=sys.stdout):
             caption = ann['caption']
             image_name = f"{ann['image_id']:012}.jpg"
 
-            # Επεξεργασία με CLIP
             text = clip.tokenize(caption).to(self.device)
             with torch.no_grad():
                 features = self.model.encode_text(text)
@@ -119,7 +117,6 @@ class ImageSearcher:
 
             embeddings.setdefault(image_name, []).append(features.cpu())
 
-        # Μέσος όρος embeddings ανά εικόνα
         final_embeddings = {
             k: torch.stack(v).mean(dim=0) for k, v in embeddings.items()
         }
@@ -128,7 +125,7 @@ class ImageSearcher:
         torch.save(final_embeddings, self.text_embed_path)
         print(f"✅ Saved {len(final_embeddings)} caption embeddings to {self.text_embed_path}")
 
-    def search(self, query: str, top_k=5):
+    def search(self, query: str, top_k=6):
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")
 
@@ -145,12 +142,4 @@ class ImageSearcher:
             results.append((name, similarity.item()))
 
         results.sort(key=lambda x: x[1], reverse=True)
-        print(f"\n🔎 Top {top_k} results for: \"{query}\"")
-        for i in range(top_k):
-            name, score = results[i]
-            print(f"{i+1}. {name} (score: {score:.4f})")
-            img = Image.open(os.path.join(self.image_dir, name))
-            plt.imshow(img)
-            plt.title(f"{name} — Score: {score:.4f}")
-            plt.axis("off")
-            plt.show()
+        return results[:top_k]
