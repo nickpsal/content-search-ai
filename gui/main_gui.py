@@ -26,12 +26,9 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 # ---------- Tabs ----------
 
 # Δημιουργία κάθε Tab
+create_settings_tab(notebook)
 # create_image_tab(notebook)
 # create_audio_tab(notebook)
-
-# 1. Settings Tab
-create_settings_tab(notebook)
-
 
 # 2. Image Tab
 image_tab = ttk.Frame(notebook)
