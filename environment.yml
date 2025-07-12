@@ -25,5 +25,6 @@ dependencies:
       - opencv-python
       - pygame
       - git+https://github.com/openai/CLIP.git
+      - deep-translator
       - openai-whisper
       - ttkbootstrap
