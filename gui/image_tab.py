@@ -31,14 +31,8 @@ def create_image_tab(notebook):
     results_frame.pack(pady=10, fill="x")
 
     image_labels = []
-    last_results = []
-    last_size = (100, 100)
 
-    def display_results(results, img_size=(100, 100)):
-        nonlocal last_results, last_size
-        last_results = results
-        last_size = img_size
-
+    def display_results(results, img_size=(200, 200)):
         for label in image_labels:
             label.destroy()
         image_labels.clear()
@@ -59,7 +53,10 @@ def create_image_tab(notebook):
                                  compound="top", anchor="center")
             img_label.image = tk_img
 
-            img_label.grid(row=0, column=i, padx=10, pady=10, sticky="n")
+            row = i // 3
+            col = i % 3
+            img_label.grid(row=row, column=col, padx=10, pady=10, sticky="n")
+
             image_labels.append(img_label)
 
     def run_search():
@@ -73,19 +70,11 @@ def create_image_tab(notebook):
             tab.update_idletasks()
 
             results = searcher.search(query, top_k=6)
-            display_results(results)
+            display_results(results, img_size=(150, 150))
         except Exception as e:
             result_label.config(text=f"❌ Σφάλμα: {e}")
 
     # Συνδέουμε το κουμπί
     search_btn.config(command=run_search)
-
-    def on_resize(event):
-        width = event.width
-        size = max(100, min(width // 10, 300))
-        if last_results:
-            display_results(last_results, img_size=(size, size))
-
-    results_frame.bind("<Configure>", on_resize)
 
     return tab

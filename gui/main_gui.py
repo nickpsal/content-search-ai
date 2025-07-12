@@ -7,7 +7,7 @@ from settings_tab import create_settings_tab
 from image_tab import create_image_tab
 # from audio_tab import create_audio_tab
 
-def center_window(window, width=900, height=600):
+def center_window(window, width=900, height=900):
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
     x = int((screen_width / 2) - (width / 2))
@@ -26,8 +26,8 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 # ---------- Tabs ----------
 
 # Δημιουργία κάθε Tab
-create_settings_tab(notebook)
 create_image_tab(notebook)
+create_settings_tab(notebook)
 # create_audio_tab(notebook)
 
 # Εκκίνηση του GUI
