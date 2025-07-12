@@ -1,18 +1,23 @@
 # gui/main_gui.py
 import ttkbootstrap as tb
-from ttkbootstrap.constants import *
 from tkinter import ttk
-
 
 # Εισαγωγή tabs
 from settings_tab import create_settings_tab
 # from tabs.image_tab import create_image_tab
 # from tabs.audio_tab import create_audio_tab
 
+def center_window(window, width=900, height=600):
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = int((screen_width / 2) - (width / 2))
+    y = int((screen_height / 2) - (height / 2))
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
 # Δημιουργία βασικού παραθύρου με θέμα
 app = tb.Window(themename="darkly")  # "darkly", "cosmo", "journal", "solar", κ.ά.
 app.title("Content Search AI")
-app.geometry("900x600")
+center_window(app, 900, 600)
 
 # Δημιουργία των tabs (Notebook)
 notebook = ttk.Notebook(app)
@@ -37,4 +42,5 @@ audio_tab = ttk.Frame(notebook)
 notebook.add(audio_tab, text="Audio")
 
 # Εκκίνηση του GUI
+
 app.mainloop()
