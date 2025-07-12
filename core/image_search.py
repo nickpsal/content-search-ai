@@ -125,7 +125,7 @@ class ImageSearcher:
         torch.save(final_embeddings, self.text_embed_path)
         print(f"✅ Saved {len(final_embeddings)} caption embeddings to {self.text_embed_path}")
 
-    def search(self, query: str, top_k=5):
+    def search(self, query: str, top_k=6):
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")
 

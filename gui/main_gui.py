@@ -4,8 +4,8 @@ from tkinter import ttk
 
 # Εισαγωγή tabs
 from settings_tab import create_settings_tab
-# from tabs.image_tab import create_image_tab
-# from tabs.audio_tab import create_audio_tab
+from image_tab import create_image_tab
+# from audio_tab import create_audio_tab
 
 def center_window(window, width=900, height=600):
     screen_width = window.winfo_screenwidth()
@@ -27,16 +27,8 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
 # Δημιουργία κάθε Tab
 create_settings_tab(notebook)
-# create_image_tab(notebook)
+create_image_tab(notebook)
 # create_audio_tab(notebook)
-
-# 2. Image Tab
-image_tab = ttk.Frame(notebook)
-notebook.add(image_tab, text="Image")
-
-# 3. Audio Tab
-audio_tab = ttk.Frame(notebook)
-notebook.add(audio_tab, text="Audio")
 
 # Εκκίνηση του GUI
 
