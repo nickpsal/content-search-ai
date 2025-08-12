@@ -1,8 +1,8 @@
 name: content-search-ai
 channels:
-  - defaults
-  - conda-forge
   - pytorch
+  - conda-forge
+  - defaults
 dependencies:
   - python=3.10
   - pip
@@ -10,7 +10,7 @@ dependencies:
   - matplotlib
   - pandas
   - tqdm
-  - pillow
+  - pillow            # παρέχει το module PIL
   - torchvision
   - pytorch
   - torchaudio
@@ -19,6 +19,7 @@ dependencies:
   - jupyterlab
   - faiss-cpu
   - ffmpeg
+  - tk                # για tkinter/ttk (απαραίτητο σε conda)
   - pip:
       - ftfy
       - regex
