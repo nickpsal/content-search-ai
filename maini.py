@@ -1,10 +1,9 @@
-# gui/main_gui.py
 import ttkbootstrap as tb
 from tkinter import ttk
 
 # Εισαγωγή tabs
-from settings_tab import create_settings_tab
-from image_tab import create_image_tab
+from gui.settings_tab import create_settings_tab
+from gui.image_tab import create_image_tab
 # from audio_tab import create_audio_tab
 
 def center_window(window, width=900, height=900):

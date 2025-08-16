@@ -3,7 +3,7 @@ import threading
 import ttkbootstrap as tb
 from tkinter import ttk, BooleanVar, Toplevel
 
-from core import ImageSearcher
+from core.image_search import ImageSearcher
 
 def create_settings_tab(notebook):
     tab = ttk.Frame(notebook)
@@ -90,6 +90,7 @@ def create_settings_tab(notebook):
         def run_download():
             try:
                 log("🚀 Ξεκινά η λήψη και η επεξεργασία...\n")
+                log("📦 Εξαγωγή images Dataset...\n")
                 searcher.download_coco_data()
                 set_progress(1)
 
