@@ -23,9 +23,7 @@ center_window(app, 900, 600)
 notebook = ttk.Notebook(app)
 notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-# ---------- Tabs ----------
-
-# Δημιουργία κάθε Tab
+# ------------------------------------- Tabs --------------------------------------#
 create_image_tab(notebook)
 create_settings_tab(notebook)
 # create_audio_tab(notebook)

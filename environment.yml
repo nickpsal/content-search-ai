@@ -10,7 +10,7 @@ dependencies:
   - matplotlib
   - pandas
   - tqdm
-  - pillow            # παρέχει το module PIL
+  - pillow
   - torchvision
   - pytorch
   - torchaudio
@@ -19,7 +19,7 @@ dependencies:
   - jupyterlab
   - faiss-cpu
   - ffmpeg
-  - tk                # για tkinter/ttk (απαραίτητο σε conda)
+  - tk
   - pip:
       - ftfy
       - regex
