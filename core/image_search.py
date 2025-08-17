@@ -1,30 +1,21 @@
+import json
 import os
 import sys
-import json
-import torch
+import zipfile
 import clip
 import requests
-import zipfile
+import torch
 from PIL import Image
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 from deep_translator import GoogleTranslator
-
+from tqdm import tqdm
 
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
-    total = int(response.headers.get('content-length', 0))
-    with open(dest_zip, 'wb') as file, tqdm(
-        desc=f"Downloading {os.path.basename(dest_zip)}",
-        total=total, unit='B', unit_scale=True, unit_divisor=1024,
-        file=sys.stdout
-    ) as bar:
+    with open(dest_zip, 'wb') as file:
         for data in response.iter_content(chunk_size=1024):
             file.write(data)
-            bar.update(len(data))
     with zipfile.ZipFile(dest_zip, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
-
 
 def translate_query(query: str, target_lang="en"):
     try:
@@ -32,7 +23,6 @@ def translate_query(query: str, target_lang="en"):
     except Exception as e:
         print(f"⚠️ Translation failed: {e}")
         return query  # fallback
-
 
 class ImageSearcher:
     def __init__(self, data_dir="../data", model_name="ViT-B/32"):
