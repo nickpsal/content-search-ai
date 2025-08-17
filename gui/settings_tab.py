@@ -13,7 +13,7 @@ def create_settings_tab(notebook):
     searcher = ImageSearcher(data_dir="../data")
     data_exists = BooleanVar(master=tab, value=False)
 
-    # -------------------------- LabelFrame: Κατάσταση Δεδομένων ----------------------------#
+    # -------------------------- LabelFrame: Κατάσταση Δεδομένων ---------------------------- #
     status_frame = tb.Labelframe(tab, text="📦 Κατάσταση Δεδομένων", padding=10)
     status_frame.pack(pady=(20, 10), padx=20, fill="x")
 
@@ -115,11 +115,11 @@ def create_settings_tab(notebook):
 
         threading.Thread(target=run_download, daemon=True).start()
 
-    # -------- Κουμπί Λήψης --------
+    # -------------------------------------- Κουμπί Λήψης ---------------------------------------- #
     download_btn = tb.Button(tab, text="⬇️ Download & Extract All Files", command=handle_download)
     download_btn.pack(pady=16)
 
-    # --------------------------- LabelFrame: Αλλαγή Background -----------------------------#
+    # ------------------------------ LabelFrame: Αλλαγή Background ------------------------------- #
     color_theme_frame = tb.Labelframe(tab, text="🎨 Αλλαγή Background Theme", padding=10)
     color_theme_frame.pack(pady=(10, 20), padx=20, fill="x")
 

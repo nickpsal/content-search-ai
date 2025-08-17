@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 from core import ImageSearcher
 
 
+# -------------------------------------- Images Tab ---------------------------------------- #
 def create_image_tab(notebook):
     tab = ttk.Frame(notebook)
     notebook.add(tab, text="Image")
