@@ -128,7 +128,7 @@ class ImageSearcher:
         print(f"✅ Saved {len(final_embeddings)} caption embeddings to {self.text_embed_path}")
 
 # ----------------------------------------- Search Image by Query ----------------------------------------- #
-    def search(self, query: str, top_k=6):
+    def search_by_query(self, query: str, top_k=6):
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")
 
@@ -146,3 +146,39 @@ class ImageSearcher:
 
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
+
+# ----------------------------------------- Search Image by Image ----------------------------------------- #
+def search_by_image(self, image_path: str, top_k=6):
+    if not os.path.exists(self.image_embed_path):
+        raise FileNotFoundError("❌ Image embeddings not found.")
+    if not os.path.isfile(image_path):
+        raise FileNotFoundError(f"❌ Image not found: {image_path}")
+
+# ----------------------------------- Load precomputed image embeddings ----------------------------------- #
+    image_embeddings = torch.load(self.image_embed_path, weights_only=True)  # dict[name] -> [1, D] CPU tensor
+
+# -------------------------------- Encode the query image and L2-normalize -------------------------------- #
+    try:
+        pil_img = Image.open(image_path).convert("RGB")
+    except Exception as e:
+        raise RuntimeError(f"❌ Failed to load image: {e}")
+
+    with torch.no_grad():
+        img_in = self.preprocess(pil_img).unsqueeze(0).to(self.device)  # [1, C, H, W]
+        q_feat = self.model.encode_image(img_in)                        # [1, D]
+        q_feat = q_feat / q_feat.norm(dim=-1, keepdim=True)             # L2-normalize
+        q_feat = q_feat.cpu()                                           # compare on CPU with stored tensors
+
+# ---------------------------- Compute cosine similarity against all embeddings ---------------------------- #
+    results = []
+    basename = os.path.basename(image_path)
+    for name, img_emb in image_embeddings.items():
+        sim = torch.cosine_similarity(q_feat, img_emb, dim=-1).item()
+        # Optional: skip exact self-match if the uploaded image exists in the dataset
+        # if name == basename:
+        #     continue
+        results.append((name, sim))
+
+    # 4) Sort by similarity and return Top-K
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_k]

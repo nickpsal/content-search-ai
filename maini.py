@@ -17,7 +17,7 @@ def center_window(window, width=900, height=900):
 # ---------------------------- Basic Window with Theme ---------------------------- #
 app = tb.Window(themename="darkly")  # "darkly", "cosmo", "journal", "solar", κ.ά.
 app.title("Content Search AI")
-center_window(app, 900, 600)
+center_window(app, 900, 900)
 
 # Δημιουργία των tabs (Notebook)
 notebook = ttk.Notebook(app)
