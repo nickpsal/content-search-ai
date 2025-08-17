@@ -26,7 +26,6 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 # -------------------------------------- Tabs -------------------------------------- #
 create_image_tab(notebook)
 create_settings_tab(notebook)
-# create_audio_tab(notebook)
 
 # ---------------------------------- Start the GUI ---------------------------------- #
 app.mainloop()

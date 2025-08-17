@@ -10,7 +10,7 @@ def create_image_tab(notebook):
     tab = ttk.Frame(notebook)
     notebook.add(tab, text="Image")
 
-    searcher = ImageSearcher(data_dir="../data")
+    searcher = ImageSearcher(data_dir="data")
 
     # Κύριο περιεχόμενο
     content_frame = ttk.Frame(tab)

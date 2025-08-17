@@ -11,9 +11,15 @@ from tqdm import tqdm
 
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
-    with open(dest_zip, 'wb') as file:
+    total = int(response.headers.get('content-length', 0))
+    with open(dest_zip, 'wb') as file, tqdm(
+        desc=f"Downloading {os.path.basename(dest_zip)}",
+        total=total, unit='B', unit_scale=True, unit_divisor=1024,
+        file=sys.stdout
+    ) as bar:
         for data in response.iter_content(chunk_size=1024):
             file.write(data)
+            bar.update(len(data))
     with zipfile.ZipFile(dest_zip, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
 
@@ -25,7 +31,8 @@ def translate_query(query: str, target_lang="en"):
         return query  # fallback
 
 class ImageSearcher:
-    def __init__(self, data_dir="../data", model_name="ViT-B/32"):
+    def __init__(self, data_dir, model_name="ViT-B/32"):
+        print(data_dir)
         self.data_dir = data_dir
         self.image_dir = os.path.join(data_dir, "images", "val2017")
         self.caption_file = os.path.join(data_dir, "annotations", "annotations", "captions_val2017.json")

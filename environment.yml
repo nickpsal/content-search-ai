@@ -11,17 +11,17 @@ dependencies:
   - pandas
   - tqdm
   - pillow
-  - pytorch
-  - torchvision
-  - torchaudio
+  - pytorch=2.5.1
+  - torchvision=0.20.1
+  - torchaudio=2.5.1
   - pycocotools
+  - faiss-cpu
   - ipykernel
   - jupyterlab
-  - faiss-cpu
   - ffmpeg
   - tk
   - pip:
-      - ftfy
+      - ftfy==6.3.1
       - regex
       - opencv-python
       - pygame

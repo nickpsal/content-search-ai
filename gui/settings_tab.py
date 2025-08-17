@@ -10,7 +10,7 @@ def create_settings_tab(notebook):
     notebook.add(tab, text="Settings")
 
     style = tb.Style()
-    searcher = ImageSearcher(data_dir="../data")
+    searcher = ImageSearcher(data_dir="data")
     data_exists = BooleanVar(master=tab, value=False)
 
     # -------------------------- LabelFrame: Κατάσταση Δεδομένων ---------------------------- #
