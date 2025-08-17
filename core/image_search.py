@@ -43,7 +43,7 @@ class ImageSearcher:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load(model_name, device=self.device)
 
-# -------------------------------------------- Download Coco Data -------------------------------------------- #
+    # -------------------------------------------- Download Coco Data -------------------------------------------- #
     def download_coco_data(self):
         # Captions
         annotations_dir = os.path.join(self.data_dir, "annotations")
@@ -71,7 +71,7 @@ class ImageSearcher:
         else:
             print(f"✅ Images already exist in {images_dir}")
 
-# ---------------------------------------- Download Image Embeddings ---------------------------------------- #
+    # ---------------------------------------- Download Image Embeddings ---------------------------------------- #
     def extract_image_embeddings(self, force=False):
         if os.path.exists(self.image_embed_path) and not force:
             print(f"✅ Image embeddings already exist at {self.image_embed_path}")
@@ -97,7 +97,7 @@ class ImageSearcher:
         torch.save(embeddings, self.image_embed_path)
         print(f"✅ Saved {len(embeddings)} image embeddings to {self.image_embed_path}")
 
-# ---------------------------------------- Download Text Embeddings ---------------------------------------- #
+    # ---------------------------------------- Download Text Embeddings ---------------------------------------- #
     def extract_text_embeddings(self, force=False):
         if os.path.exists(self.text_embed_path) and not force:
             print(f"✅ Caption embeddings already exist at {self.text_embed_path}")
@@ -127,18 +127,25 @@ class ImageSearcher:
         torch.save(final_embeddings, self.text_embed_path)
         print(f"✅ Saved {len(final_embeddings)} caption embeddings to {self.text_embed_path}")
 
-# ----------------------------------------- Search Image by Query ----------------------------------------- #
+    # ----------------------------------------- Search Image by Query ----------------------------------------- #
     def search_by_query(self, query: str, top_k=6):
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")
 
+        # -------------------------------------- Translate query at English -------------------------------------- #
         query = translate_query(query)
+
+        # ----------------------------------- Load precomputed image embeddings ----------------------------------- #
         image_embeddings = torch.load(self.image_embed_path, weights_only=True)
+
+        # ------------------------------- Creating Dictionary from Image Embeddings ------------------------------- #
+        # ----------------------------------- key = filename value = tensor[1,0] -----------------------------------#
         text = clip.tokenize([query]).to(self.device)
         with torch.no_grad():
             text_features = self.model.encode_text(text)
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
+        # ------------------------------- Compute similarity against all embeddings ------------------------------- #
         results = []
         for name, img_emb in image_embeddings.items():
             similarity = torch.cosine_similarity(text_features, img_emb, dim=-1)
@@ -154,10 +161,10 @@ def search_by_image(self, image_path: str, top_k=6):
     if not os.path.isfile(image_path):
         raise FileNotFoundError(f"❌ Image not found: {image_path}")
 
-# ----------------------------------- Load precomputed image embeddings ----------------------------------- #
+    # ----------------------------------- Load precomputed image embeddings ----------------------------------- #
     image_embeddings = torch.load(self.image_embed_path, weights_only=True)  # dict[name] -> [1, D] CPU tensor
 
-# -------------------------------- Encode the query image and L2-normalize -------------------------------- #
+    # -------------------------------- Encode the query image and L2-normalize -------------------------------- #
     try:
         pil_img = Image.open(image_path).convert("RGB")
     except Exception as e:
@@ -169,7 +176,7 @@ def search_by_image(self, image_path: str, top_k=6):
         q_feat = q_feat / q_feat.norm(dim=-1, keepdim=True)             # L2-normalize
         q_feat = q_feat.cpu()                                           # compare on CPU with stored tensors
 
-# ---------------------------- Compute cosine similarity against all embeddings ---------------------------- #
+    # ---------------------------- Compute cosine similarity against all embeddings ---------------------------- #
     results = []
     basename = os.path.basename(image_path)
     for name, img_emb in image_embeddings.items():
