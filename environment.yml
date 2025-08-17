@@ -4,15 +4,15 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.13
+  - python=3.10
   - pip
-  - numpy
+  - numpy=1.26.4
   - matplotlib
   - pandas
   - tqdm
   - pillow
-  - torchvision
   - pytorch
+  - torchvision
   - torchaudio
   - pycocotools
   - ipykernel
@@ -25,7 +25,7 @@ dependencies:
       - regex
       - opencv-python
       - pygame
-      - git+https://github.com/openai/CLIP.git
+      - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
       - deep-translator
       - openai-whisper
       - ttkbootstrap
