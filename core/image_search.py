@@ -9,6 +9,7 @@ from PIL import Image
 from deep_translator import GoogleTranslator
 from tqdm import tqdm
 
+# ---------------------------------------- Download and Extract Data ---------------------------------------- #
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
     total = int(response.headers.get('content-length', 0))
@@ -23,6 +24,7 @@ def download_and_extract(url, dest_zip, extract_to):
     with zipfile.ZipFile(dest_zip, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
 
+# ---------------------------------------- Translate Query to English ---------------------------------------- #
 def translate_query(query: str, target_lang="en"):
     try:
         return GoogleTranslator(source="auto", target=target_lang).translate(query)
@@ -30,9 +32,9 @@ def translate_query(query: str, target_lang="en"):
         print(f"⚠️ Translation failed: {e}")
         return query  # fallback
 
+# ---------------------------------------------- Image Searcher ---------------------------------------------- #
 class ImageSearcher:
     def __init__(self, data_dir, model_name="ViT-B/32"):
-        print(data_dir)
         self.data_dir = data_dir
         self.image_dir = os.path.join(data_dir, "images", "val2017")
         self.caption_file = os.path.join(data_dir, "annotations", "annotations", "captions_val2017.json")
@@ -41,6 +43,7 @@ class ImageSearcher:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model, self.preprocess = clip.load(model_name, device=self.device)
 
+# -------------------------------------------- Download Coco Data -------------------------------------------- #
     def download_coco_data(self):
         # Captions
         annotations_dir = os.path.join(self.data_dir, "annotations")
@@ -68,6 +71,7 @@ class ImageSearcher:
         else:
             print(f"✅ Images already exist in {images_dir}")
 
+# ---------------------------------------- Download Image Embeddings ---------------------------------------- #
     def extract_image_embeddings(self, force=False):
         if os.path.exists(self.image_embed_path) and not force:
             print(f"✅ Image embeddings already exist at {self.image_embed_path}")
@@ -93,6 +97,7 @@ class ImageSearcher:
         torch.save(embeddings, self.image_embed_path)
         print(f"✅ Saved {len(embeddings)} image embeddings to {self.image_embed_path}")
 
+# ---------------------------------------- Download Text Embeddings ---------------------------------------- #
     def extract_text_embeddings(self, force=False):
         if os.path.exists(self.text_embed_path) and not force:
             print(f"✅ Caption embeddings already exist at {self.text_embed_path}")
@@ -122,6 +127,7 @@ class ImageSearcher:
         torch.save(final_embeddings, self.text_embed_path)
         print(f"✅ Saved {len(final_embeddings)} caption embeddings to {self.text_embed_path}")
 
+# ----------------------------------------- Search Image by Query ----------------------------------------- #
     def search(self, query: str, top_k=6):
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")

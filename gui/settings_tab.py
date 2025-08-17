@@ -13,7 +13,7 @@ def create_settings_tab(notebook):
     searcher = ImageSearcher(data_dir="data")
     data_exists = BooleanVar(master=tab, value=False)
 
-    # -------------------------- LabelFrame: Κατάσταση Δεδομένων ---------------------------- #
+    # ---------------------------------- LabelFrame: Data State ---------------------------------- #
     status_frame = tb.Labelframe(tab, text="📦 Κατάσταση Δεδομένων", padding=10)
     status_frame.pack(pady=(20, 10), padx=20, fill="x")
 
@@ -44,7 +44,6 @@ def create_settings_tab(notebook):
                 all_ok = False
         data_exists.set(all_ok)
 
-    # Δημιουργία γραμμών εμφάνισης status
     row = 0
     for label, _emoji in [
         ("Images", "🖼️"),
@@ -60,7 +59,7 @@ def create_settings_tab(notebook):
         status_labels[label + "_val"] = l2
         row += 1
 
-    # -------- Modal & Download Handler --------
+    # -------------------------------- Model and Download Handler -------------------------------- #
     def handle_download():
         modal = Toplevel(tab)
         modal.title("Λήψη Δεδομένων")
@@ -115,11 +114,11 @@ def create_settings_tab(notebook):
 
         threading.Thread(target=run_download, daemon=True).start()
 
-    # -------------------------------------- Κουμπί Λήψης ---------------------------------------- #
+    # -------------------------------------- Download Button ---------------------------------------- #
     download_btn = tb.Button(tab, text="⬇️ Download & Extract All Files", command=handle_download)
     download_btn.pack(pady=16)
 
-    # ------------------------------ LabelFrame: Αλλαγή Background ------------------------------- #
+    # -------------------------------- LabelFrame: Change Background -------------------------------- #
     color_theme_frame = tb.Labelframe(tab, text="🎨 Αλλαγή Background Theme", padding=10)
     color_theme_frame.pack(pady=(10, 20), padx=20, fill="x")
 
