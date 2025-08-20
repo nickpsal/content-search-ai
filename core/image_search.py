@@ -145,7 +145,7 @@ class ImageSearcher:
             text_features = self.model.encode_text(text)
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
-        # ------------------------------- Compute similarity against all embeddings ------------------------------- #
+        # --------------------------- Compute cosine similarity against all embeddings --------------------------- #
         results = []
         for name, img_emb in image_embeddings.items():
             similarity = torch.cosine_similarity(text_features, img_emb, dim=-1)

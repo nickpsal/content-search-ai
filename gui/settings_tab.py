@@ -17,18 +17,19 @@ def create_settings_tab(notebook):
     status_frame = tb.Labelframe(tab, text="📦 Κατάσταση Δεδομένων", padding=10)
     status_frame.pack(pady=(20, 10), padx=20, fill="x")
 
-    # ωραία στοίχιση των δύο στηλών
+    # ---------------------------------- column align to center ---------------------------------- #
     status_frame.grid_columnconfigure(0, weight=1)
     status_frame.grid_columnconfigure(1, weight=0)
 
     status_labels = {}
 
+    # --------------------------------------- Status Update --------------------------------------- #
     def update_status(name, emj, ok):
-        # Καλείται πάντα στο main thread
         text = f"{emj} {name}:"
         status_labels[name].config(text=text)
         status_labels[name + "_val"].config(text=("✅" if ok else "❌"))
 
+    # ------------------------------------ check if data exists ------------------------------------ #
     def check_data_exists():
         all_ok = True
         items = [
@@ -88,28 +89,25 @@ def create_settings_tab(notebook):
 
         def run_download():
             try:
-                log("🚀 Ξεκινά η λήψη και η επεξεργασία...\n")
-                log("📦 Εξαγωγή images Dataset...\n")
+                log("🚀 Download and Processing ha started...\n")
+                log("📦 Extract Image Datasets ...\n")
                 searcher.download_coco_data()
                 set_progress(1)
 
-                log("📦 Εξαγωγή image embeddings...\n")
+                log("📦 Extract image embeddings ...\n")
                 searcher.extract_image_embeddings()
                 set_progress(2)
 
-                log("🧠 Εξαγωγή text embeddings...\n")
+                log("🧠 Extract text embeddings...\n")
                 searcher.extract_text_embeddings()
                 set_progress(3)
 
-                log("\n✅ Όλα τα δεδομένα ετοιμάστηκαν.\n")
+                log("\n✅ All the Data are Ready.\n")
             except Exception as e:
-                log(f"\n❌ Σφάλμα: {e}\n")
-                # αν αποτύχει, άφησε ξανά ενεργό το κουμπί
+                log(f"\n❌ Error: {e}\n")
                 tab.after(0, lambda: download_btn.config(state="normal"))
             finally:
-                # Ανανέωση status στο main thread
                 tab.after(0, check_data_exists)
-                # Κλείσιμο modal μετά από λίγο ώστε να δει ο χρήστης το τελικό log
                 modal.after(500, modal.destroy)
 
         threading.Thread(target=run_download, daemon=True).start()
@@ -151,7 +149,7 @@ def create_settings_tab(notebook):
         text="Tip: Dark themes → darkly, cyborg, superhero, vapor.",
     ).pack(anchor="w", pady=(8, 0))
 
-    # Αρχικός έλεγχος δεδομένων & disable κουμπιού αν όλα υπάρχουν
+    # -------------------------------------- Check if Data exists -------------------------------------- #
     check_data_exists()
     if data_exists.get():
         download_btn.config(state="disabled")
