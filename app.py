@@ -3,11 +3,11 @@ import streamlit as st
 from deep_translator import GoogleTranslator
 import os
 
-# ---- ΡΥΘΜΙΣΕΙΣ ----
+# ---- Settings ----
 st.set_page_config(page_title="Search Content in Multimedia Digital Archives using Artificial Intelligence", layout="wide")
 st.title("🔎 Search Content in Multimedia Digital Archives using Artificial Intelligence \n Version 1.0")
 
-# ---- ΑΡΧΙΚΟΠΟΙΗΣΗ ----
+# ---- Initial ----
 DATA_DIR = "./data"
 searcher = ImageSearcher(data_dir=DATA_DIR)
 
