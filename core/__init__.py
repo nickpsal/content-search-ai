@@ -1,1 +1,1 @@
-from .image_search import ImageSearcher
+from image_search import ImageSearcher
