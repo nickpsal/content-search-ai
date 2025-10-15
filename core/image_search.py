@@ -9,8 +9,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from deep_translator import GoogleTranslator
 
-
-
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
     total = int(response.headers.get('content-length', 0))
