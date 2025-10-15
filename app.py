@@ -4,47 +4,47 @@ from deep_translator import GoogleTranslator
 import os
 
 # ---- ΡΥΘΜΙΣΕΙΣ ----
-st.set_page_config(page_title="AI Image Search", layout="wide")
-st.title("🔎 Αναζήτηση Εικόνων με CLIP & COCO Dataset")
+st.set_page_config(page_title="Search Content in Multimedia Digital Archives using Artificial Intelligence", layout="wide")
+st.title("🔎 Search Content in Multimedia Digital Archives using Artificial Intelligence \n Version 1.0")
 
 # ---- ΑΡΧΙΚΟΠΟΙΗΣΗ ----
 DATA_DIR = "./data"
 searcher = ImageSearcher(data_dir=DATA_DIR)
 
 # ---- 1️⃣ DOWNLOAD COCO DATA ----
-if st.button("📦 Κατέβασε COCO Dataset"):
+if st.button("📦 Download COCO Dataset"):
     searcher.download_coco_data()
-    st.success("✅ Το COCO dataset κατέβηκε και αποσυμπιέστηκε επιτυχώς!")
+    st.success("✅ The COCO dataset downloaded and unzipped successfully!")
 
 # ---- 2️⃣ EXTRACT IMAGE EMBEDDINGS ----
-if st.button("🧠 Δημιούργησε Image Embeddings"):
+if st.button("🧠 Extract Image Embeddings"):
     searcher.extract_image_embeddings()
-    st.success("✅ Δημιουργήθηκαν τα image embeddings!")
+    st.success("✅ Image embeddings was created successfully")
 
 # ---- 3️⃣ EXTRACT TEXT EMBEDDINGS ----
-if st.button("💬 Δημιούργησε Caption Embeddings"):
+if st.button("💬 Extract Caption Embeddings"):
     searcher.extract_text_embeddings()
-    st.success("✅ Δημιουργήθηκαν τα caption embeddings!")
+    st.success("✅ Caption embeddings was created successfully!")
 
 # ---- 4️⃣ SEARCH ----
 st.divider()
-st.subheader("🔍 Αναζήτηση")
+st.subheader("🔍 Image Search")
 
-query = st.text_input("✍️ Γράψε ερώτημα (π.χ. 'Ένα άλογο στην παραλία')")
+query = st.text_input("✍️ Search Query")
 
-if st.button("🔎 Εκτέλεση Αναζήτησης"):
+if st.button("🔎 Run Search"):
     if query.strip() == "":
-        st.warning("⚠️ Πρέπει να γράψεις κάποιο ερώτημα!")
+        st.warning("⚠️ You have to include a Search Criteria!")
     else:
         # Μετάφραση στα αγγλικά για το CLIP
         query_en = GoogleTranslator(source="auto", target="en").translate(query)
-        st.info(f"Αναζήτηση για: '{query}' → Μετάφραση: '{query_en}'")
+        st.info(f"Searching for: '{query}'")
 
         results = searcher.search(query_en, top_k=5)
         if not results:
-            st.warning("Δεν βρέθηκαν αποτελέσματα.")
+            st.warning("No result Found.")
         else:
-            st.success(f"Βρέθηκαν {len(results)} σχετικά αποτελέσματα:")
+            st.success(f"Found {len(results)} results")
 
             cols = st.columns(5)
             for i, result in enumerate(results):
