@@ -1,4 +1,4 @@
-from image_search import ImageSearcher
+from core import ImageSearcher
 
 search_query = "Ενα άλογο στην παραλία"
 searcher = ImageSearcher()
