@@ -19,10 +19,16 @@ dependencies:
   - jupyterlab
   - faiss-cpu
   - ffmpeg
+
   - pip:
       - ftfy
       - regex
       - opencv-python
       - pygame
-      - git+https://github.com/openai/CLIP.git
+      - deep-translator
+      - tiktoken
+      - requests
+      - streamlit
+      - ttkbootstrap
+      - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
       - openai-whisper
