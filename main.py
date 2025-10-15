@@ -1,6 +1,6 @@
 from core import ImageSearcher
 
-search_query = "Ενα άλογο στην παραλία"
+search_query = "women on beach"
 searcher = ImageSearcher()
 searcher.download_coco_data()
 searcher.extract_image_embeddings()

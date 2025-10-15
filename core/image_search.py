@@ -144,11 +144,12 @@ class ImageSearcher:
 
         results.sort(key=lambda x: x[1], reverse=True)
         print(f"\n🔎 Top {top_k} results for: \"{query}\"")
+        top_results = []
         for i in range(top_k):
             name, score = results[i]
-            print(f"{i+1}. {name} (score: {score:.4f})")
-            img = Image.open(os.path.join(self.image_dir, name))
-            plt.imshow(img)
-            plt.title(f"{name} — Score: {score:.4f}")
-            plt.axis("off")
-            plt.show()
+            print(f"{i + 1}. {name} (score: {score:.4f})")
+            img_path = os.path.join(self.image_dir, name)
+            top_results.append({"path": img_path, "score": round(score, 4)})
+
+        return top_results
+
