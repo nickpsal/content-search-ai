@@ -37,7 +37,6 @@ if st.button("🔎 Run Search"):
         st.warning("⚠️ You have to include a Search Criteria!")
     else:
         # Μετάφραση στα αγγλικά για το CLIP
-        query_en = GoogleTranslator(source="auto", target="en").translate(query)
         st.info(f"Searching for: '{query}'")
 
         results = searcher.search(query_en, top_k=5)
