@@ -43,7 +43,7 @@ class ImageSearcher:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # ✅ M-CLIP μοντέλο (multilingual CLIP)
-        self.model = SentenceTransformer("sentence-transformers/clip-ViT-B-32-multilingual-v1", device=self.device)
+        self.model = SentenceTransformer("./models/mclip_finetuned_coco", device=self.device)
 
     # ---------------------------------------------------------
     # 🧠 ENCODERS
