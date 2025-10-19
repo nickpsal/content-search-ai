@@ -6,6 +6,7 @@ import requests
 import zipfile
 from PIL import Image
 from tqdm import tqdm
+from sentence_transformers import SentenceTransformer
 
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
@@ -20,17 +21,26 @@ def download_and_extract(url, dest_zip, extract_to):
         zip_ref.extractall(extract_to)
 
 class ImageSearcher:
-    def __init__(self, data_dir="./data", model_name="ViT-B/32"):
+    def __init__(self, data_dir="./data", model_name="./models/mclip_finetuned_coco", use_finetuned=True):
         self.data_dir = data_dir
         self.image_dir = os.path.join(data_dir, "images", "val2017")
         self.caption_file = os.path.join(data_dir, "annotations", "annotations", "captions_val2017.json")
         self.image_embed_path = os.path.join(data_dir, "embeddings", "coco_val_image_embeddings.pt")
         self.text_embed_path = os.path.join(data_dir, "embeddings", "coco_val_text_embeddings.pt")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model, self.preprocess = clip.load(model_name, device=self.device)
+        self.use_finetuned = use_finetuned
+
+        # ✅ εδώ γίνεται η μόνη αλλαγή:
+        if self.use_finetuned:
+            print(f"🚀 Using fine-tuned M-CLIP model from {model_name}")
+            self.model = SentenceTransformer(model_name, device=self.device)
+            self.preprocess = None
+        else:
+            print(f"🚀 Using OpenAI CLIP model: {model_name}")
+            self.model, self.preprocess = clip.load(model_name, device=self.device)
 
     def download_coco_data(self):
-        # Download captions
+        # (καμία αλλαγή)
         annotations_dir = os.path.join(self.data_dir, "annotations")
         os.makedirs(annotations_dir, exist_ok=True)
         caption_zip = os.path.join(annotations_dir, "annotations_trainval2017.zip")
@@ -42,7 +52,6 @@ class ImageSearcher:
                 annotations_dir
             )
 
-        # Download images
         images_dir = os.path.join(self.data_dir, "images")
         os.makedirs(images_dir, exist_ok=True)
         image_zip = os.path.join(images_dir, "val2017.zip")
@@ -57,7 +66,6 @@ class ImageSearcher:
             print(f"Images Already exists on {images_dir} folder")
 
     def extract_image_embeddings(self, force=False):
-        # Αν υπάρχουν ήδη και δε θέλουμε force, τότε κάνε skip
         if os.path.exists(self.image_embed_path) and not force:
             print(f"✅ Image embeddings already exist at {self.image_embed_path}")
             return
@@ -70,10 +78,14 @@ class ImageSearcher:
 
         for path in tqdm(image_paths, desc="Extracting image embeddings"):
             try:
-                image = self.preprocess(Image.open(path).convert("RGB")).unsqueeze(0).to(self.device)
-                with torch.no_grad():
-                    features = self.model.encode_image(image)
-                    features = features / features.norm(dim=-1, keepdim=True)
+                if self.use_finetuned:
+                    image = Image.open(path).convert("RGB")
+                    features = self.model.encode(image, convert_to_tensor=True, normalize_embeddings=True)
+                else:
+                    image = self.preprocess(Image.open(path).convert("RGB")).unsqueeze(0).to(self.device)
+                    with torch.no_grad():
+                        features = self.model.encode_image(image)
+                        features = features / features.norm(dim=-1, keepdim=True)
                 embeddings[os.path.basename(path)] = features.cpu()
             except Exception as e:
                 print(f"⚠️ Error processing {path}: {e}")
@@ -83,12 +95,10 @@ class ImageSearcher:
         print(f"✅ Saved {len(embeddings)} image embeddings to {self.image_embed_path}")
 
     def extract_text_embeddings(self, force=False):
-        # Αν υπάρχουν ήδη και δε θέλουμε force, κάνε skip
         if os.path.exists(self.text_embed_path) and not force:
             print(f"✅ Caption embeddings already exist at {self.text_embed_path}")
             return
 
-        # Φόρτωσε captions από JSON
         with open(self.caption_file, 'r') as f:
             data = json.load(f)
 
@@ -98,15 +108,16 @@ class ImageSearcher:
             caption = ann['caption']
             image_name = f"{ann['image_id']:012}.jpg"
 
-            # Επεξεργασία με CLIP
-            text = clip.tokenize(caption).to(self.device)
-            with torch.no_grad():
-                features = self.model.encode_text(text)
-                features = features / features.norm(dim=-1, keepdim=True)
+            if self.use_finetuned:
+                features = self.model.encode(caption, convert_to_tensor=True, normalize_embeddings=True)
+            else:
+                text = clip.tokenize(caption).to(self.device)
+                with torch.no_grad():
+                    features = self.model.encode_text(text)
+                    features = features / features.norm(dim=-1, keepdim=True)
 
             embeddings.setdefault(image_name, []).append(features.cpu())
 
-        # Μέσος όρος embeddings ανά εικόνα
         final_embeddings = {
             k: torch.stack(v).mean(dim=0) for k, v in embeddings.items()
         }
@@ -120,11 +131,14 @@ class ImageSearcher:
             raise FileNotFoundError("❌ Image embeddings not found.")
 
         image_embeddings = torch.load(self.image_embed_path, weights_only=True)
-        text = clip.tokenize([query]).to(self.device)
 
-        with torch.no_grad():
-            text_features = self.model.encode_text(text)
-            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        if self.use_finetuned:
+            text_features = self.model.encode(query, convert_to_tensor=True, normalize_embeddings=True)
+        else:
+            text = clip.tokenize([query]).to(self.device)
+            with torch.no_grad():
+                text_features = self.model.encode_text(text)
+                text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
         results = []
         for name, img_emb in image_embeddings.items():
@@ -135,10 +149,8 @@ class ImageSearcher:
                 "name": name
             })
 
-        # Ταξινόμηση με βάση similarity
         results.sort(key=lambda x: x["score"], reverse=True)
 
         print(f"{len(results)} Images founded")
 
-        # Πάρε μόνο όσα υπάρχουν πραγματικά
         return results[:min(top_k, len(results))]
