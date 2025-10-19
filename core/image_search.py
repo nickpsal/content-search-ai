@@ -6,8 +6,6 @@ import requests
 import zipfile
 from PIL import Image
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from deep_translator import GoogleTranslator
 
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
@@ -20,15 +18,6 @@ def download_and_extract(url, dest_zip, extract_to):
             bar.update(len(data))
     with zipfile.ZipFile(dest_zip, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
-
-
-def translate_query(query: str, target_lang="en"):
-    try:
-        return GoogleTranslator(source="auto", target=target_lang).translate(query)
-    except Exception as e:
-        print(f"⚠️ Translation failed: {e}")
-        return query  # fallback to original
-
 
 class ImageSearcher:
     def __init__(self, data_dir="./data", model_name="ViT-B/32"):
@@ -130,7 +119,6 @@ class ImageSearcher:
         if not os.path.exists(self.image_embed_path):
             raise FileNotFoundError("❌ Image embeddings not found.")
 
-        query = translate_query(query)
         image_embeddings = torch.load(self.image_embed_path, weights_only=True)
         text = clip.tokenize([query]).to(self.device)
 
