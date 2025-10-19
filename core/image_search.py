@@ -133,6 +133,7 @@ class ImageSearcher:
         query = translate_query(query)
         image_embeddings = torch.load(self.image_embed_path, weights_only=True)
         text = clip.tokenize([query]).to(self.device)
+
         with torch.no_grad():
             text_features = self.model.encode_text(text)
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
@@ -140,15 +141,17 @@ class ImageSearcher:
         results = []
         for name, img_emb in image_embeddings.items():
             similarity = torch.cosine_similarity(text_features, img_emb, dim=-1)
-            results.append((name, similarity.item()))
+            results.append({
+                "path": os.path.join(self.image_dir, name),
+                "score": similarity.item(),
+                "name": name
+            })
 
-        results.sort(key=lambda x: x[1], reverse=True)
-        print(f"\n🔎 Top {top_k} results for: \"{query}\"")
-        for i in range(top_k):
-            name, score = results[i]
-            print(f"{i+1}. {name} (score: {score:.4f})")
-            img = Image.open(os.path.join(self.image_dir, name))
-            plt.imshow(img)
-            plt.title(f"{name} — Score: {score:.4f}")
-            plt.axis("off")
-            plt.show()
+        # Ταξινόμηση με βάση similarity
+        results.sort(key=lambda x: x["score"], reverse=True)
+
+        for i, result in enumerate(results[top_k]):
+            print(results[i])
+
+        # Πάρε μόνο όσα υπάρχουν πραγματικά
+        return results[:min(top_k, len(results))]

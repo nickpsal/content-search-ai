@@ -36,21 +36,21 @@ if st.button("🔎 Run Search"):
     if query.strip() == "":
         st.warning("⚠️ You have to include a Search Criteria!")
     else:
-        # Μετάφραση στα αγγλικά για το CLIP
         st.info(f"Searching for: '{query}'")
 
-        results = searcher.search(query_en, top_k=5)
+        results = searcher.search(query, top_k=5)
         if not results:
             st.warning("No result Found.")
         else:
             st.success(f"Found {len(results)} results")
 
-            cols = st.columns(5)
+            cols = st.columns(len(results))
             for i, result in enumerate(results):
                 img_path = result["path"]
                 score = result["score"]
 
                 with cols[i]:
                     st.image(img_path, caption=f"{os.path.basename(img_path)}", width=200)
-                    st.progress(min(score, 1.0))  # progress bar μέχρι 1.0
+                    st.progress(min(score, 1.0))
                     st.caption(f"Similarity: **{score * 100:.2f}%**")
+
