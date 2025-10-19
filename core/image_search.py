@@ -31,7 +31,7 @@ def translate_query(query: str, target_lang="en"):
 
 
 class ImageSearcher:
-    def __init__(self, data_dir="../data", model_name="ViT-B/32"):
+    def __init__(self, data_dir="./data", model_name="ViT-B/32"):
         self.data_dir = data_dir
         self.image_dir = os.path.join(data_dir, "images", "val2017")
         self.caption_file = os.path.join(data_dir, "annotations", "annotations", "captions_val2017.json")
@@ -150,8 +150,7 @@ class ImageSearcher:
         # Ταξινόμηση με βάση similarity
         results.sort(key=lambda x: x["score"], reverse=True)
 
-        for i, result in enumerate(results[top_k]):
-            print(results[i])
+        print(f"{len(results)} Images founded")
 
         # Πάρε μόνο όσα υπάρχουν πραγματικά
         return results[:min(top_k, len(results))]
