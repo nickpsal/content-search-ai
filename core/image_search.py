@@ -21,7 +21,7 @@ def download_and_extract(url, dest_zip, extract_to):
         zip_ref.extractall(extract_to)
 
 class ImageSearcher:
-    def __init__(self, data_dir="./data", model_name="./models/mclip_finetuned_coco", use_finetuned=True):
+    def __init__(self, data_dir="./data", model_name="./models/mclip_finetuned_coco_ready", use_finetuned=True):
         self.data_dir = data_dir
         self.image_dir = os.path.join(data_dir, "images", "val2017")
         self.caption_file = os.path.join(data_dir, "annotations", "annotations", "captions_val2017.json")
