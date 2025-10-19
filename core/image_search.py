@@ -151,6 +151,12 @@ class ImageSearcher:
 
         results.sort(key=lambda x: x["score"], reverse=True)
 
-        print(f"{len(results)} Images founded")
+        for i, result in enumerate(results[:5]):
+            img_path = result["path"]
+            score = result["score"]
+
+            print(img_path)
+            print(score)
+
 
         return results[:min(top_k, len(results))]
