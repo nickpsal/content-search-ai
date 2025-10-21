@@ -4,10 +4,10 @@ import gdown
 from tqdm import tqdm
 
 class Model:
-    def __init__(self, model_id="142mGbCA8Zrsy4gOwj0eAMaBTKl4xm8wh", data_dir="models"):
+    def __init__(self, model_id="1U1pqD9g4_NwZLWW-Y_VYO2Qfk7ymzySN", data_dir="models"):
         self.model_link_id = model_id
         self.model_dir = os.path.abspath(data_dir)
-        self.model_zip = os.path.join(self.model_dir, "mclip_finetuned_coco.zip")
+        self.model_zip = os.path.join(self.model_dir, "mclip_finetuned_coco_ready.zip")
 
     def download_model(self):
         """Κατεβάζει και αποσυμπιέζει το μοντέλο από Google Drive μέσα στο models/"""
