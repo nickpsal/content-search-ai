@@ -1,4 +1,5 @@
 from core import ImageSearcher
+from core import Model
 import streamlit as st
 from deep_translator import GoogleTranslator
 import os
@@ -9,24 +10,30 @@ st.title("🔎 Search Content in Multimedia Digital Archives using Artificial In
 
 # ---- Initial ----
 DATA_DIR = "./data"
+model = Model()
 searcher = ImageSearcher(data_dir=DATA_DIR)
 
-# ---- 1️⃣ DOWNLOAD COCO DATA ----
+# ---- DOWNLOAD MODEL ----
+if st.button("📦 Download Model"):
+    model.download_model()
+    st.success("✅ The Fine Tuned Model downloaded and unzipped successfully!")
+
+# ---- DOWNLOAD COCO DATA ----
 if st.button("📦 Download COCO Dataset"):
     searcher.download_coco_data()
     st.success("✅ The COCO dataset downloaded and unzipped successfully!")
 
-# ---- 2️⃣ EXTRACT IMAGE EMBEDDINGS ----
+# ---- EXTRACT IMAGE EMBEDDINGS ----
 if st.button("🧠 Extract Image Embeddings"):
     searcher.extract_image_embeddings()
     st.success("✅ Image embeddings was created successfully")
 
-# ---- 3️⃣ EXTRACT TEXT EMBEDDINGS ----
+# ---- EXTRACT TEXT EMBEDDINGS ----
 if st.button("💬 Extract Caption Embeddings"):
     searcher.extract_text_embeddings()
     st.success("✅ Caption embeddings was created successfully!")
 
-# ---- 4️⃣ SEARCH ----
+# ---- SEARCH ----
 st.divider()
 st.subheader("🔍 Image Search")
 

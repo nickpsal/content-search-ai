@@ -8,6 +8,8 @@ import numpy as np
 from PIL import Image, ImageFile
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
+import time
+from datetime import datetime
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # αποφυγή σφαλμάτων σε κατεστραμμένες εικόνες
 
@@ -38,13 +40,15 @@ class ImageSearcher:
         self.text_embed_path = os.path.join(data_dir, "embeddings", "coco_val_text_embeddings.pt")
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = "./models//mclip_finetuned_coco_ready"
+        # self.model = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
 
         # HYBRID MODE
         print("🚀 Using hybrid setup:")
-        print("   🧠 Text encoder: sentence-transformers/clip-ViT-B-32-multilingual-v1")
+        print(f"   🧠 Text encoder: {self.model}")
         print("   🖼️ Image encoder: OpenAI CLIP ViT-B/32")
 
-        self.text_model = SentenceTransformer("sentence-transformers/clip-ViT-B-32-multilingual-v1", device=self.device)
+        self.text_model = SentenceTransformer(self.model, device=self.device)
         self.image_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
 
     # ---------------------------------------------------------------------
@@ -148,8 +152,8 @@ class ImageSearcher:
     # ---------------------------------------------------------------------
     # SEARCH TEXT → IMAGE
     # ---------------------------------------------------------------------
-    def search(self, query: str, top_k=5):
-        # φόρτωση embeddings (και COCO και other)
+    def search(self, query: str, top_k=5, log_file="search_log.txt", verbose=True):
+        # φόρτωση embeddings (COCO + OTHER)
         image_embeddings = {}
         if os.path.exists(self.image_embed_path):
             image_embeddings.update(torch.load(self.image_embed_path, weights_only=True))
@@ -159,15 +163,29 @@ class ImageSearcher:
         if not image_embeddings:
             raise FileNotFoundError("❌ No image embeddings found. Run extract_image_embeddings() first.")
 
-        # encode text με multilingual encoder
+        print(f"✅ Loaded {len(image_embeddings)} image embeddings")
+
+        # text encoding
         text_features = self.text_model.encode(query, convert_to_tensor=True, normalize_embeddings=True)
 
         results = []
+        start_time = time.time()
+
+        # verbose logging for calculation
+        if verbose:
+            print("\n📐 Cosine Similarity Formula: sim(A,B) = (A · B) / (||A|| * ||B||)")
+            print("Since normalize_embeddings=True ⇒ ||A|| = ||B|| = 1 ⇒ sim(A,B) = A · B\n")
+
         for name, img_emb in image_embeddings.items():
             similarity = torch.cosine_similarity(text_features, img_emb, dim=-1)
+
+            if verbose:
+                print(f"Name => Similarity: {name} => {similarity.item():.4f}")
+
             path = os.path.join(self.image_dir, name)
             if not os.path.exists(path):
                 path = os.path.join(self.extra_image_dir, name)
+
             results.append({
                 "path": path,
                 "score": similarity.item(),
@@ -175,8 +193,31 @@ class ImageSearcher:
             })
 
         results.sort(key=lambda x: x["score"], reverse=True)
+
+        elapsed = time.time() - start_time
+
+        # εμφάνιση top-k
         print(f"\n🔎 Top {top_k} results for: {query}\n")
         for i, r in enumerate(results[:top_k]):
-            print(f"{i+1}. {r['path']}  (score={r['score']:.4f})")
+            print(f"{i + 1}. {r['path']}  (score={r['score']:.4f})")
+        print(f"\n⏱️ Search completed in {elapsed:.2f}s")
+
+        # ✍️ Καταγραφή σε log file (append mode)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write("=" * 80 + "\n")
+            f.write(f"🕓 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Query: {query}\n")
+            f.write(f"Total Images: {len(image_embeddings)}\n")
+            f.write(f"Search Time: {elapsed:.2f}s\n")
+            f.write("Similarity Calculation:\n")
+            f.write("  sim(A,B) = (A · B) / (||A|| * ||B||)\n")
+            f.write("  Since normalize_embeddings=True, ||A||=||B||=1 ⇒ sim(A,B) = A · B\n\n")
+            f.write(f"Top {top_k} Results:\n")
+            for i, r in enumerate(results[:top_k]):
+                f.write(f"  {i + 1}. {r['name']} (score={r['score']:.4f})\n")
+            f.write("\nAll Similarities (Top 20 by score):\n")
+            for r in results[:20]:
+                f.write(f"  {r['name']} => {r['score']:.4f}\n")
+            f.write("\n\n")
 
         return results[:top_k]
