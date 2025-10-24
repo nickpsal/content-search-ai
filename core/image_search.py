@@ -4,7 +4,6 @@ import torch
 import clip
 import requests
 import zipfile
-import numpy as np
 from PIL import Image, ImageFile
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
@@ -12,7 +11,6 @@ import time
 from datetime import datetime
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True  # αποφυγή σφαλμάτων σε κατεστραμμένες εικόνες
-
 
 def download_and_extract(url, dest_zip, extract_to):
     response = requests.get(url, stream=True)
@@ -44,10 +42,6 @@ class ImageSearcher:
         # self.model = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
 
         # HYBRID MODE
-        print("🚀 Using hybrid setup:")
-        print(f"   🧠 Text encoder: {self.model}")
-        print("   🖼️ Image encoder: OpenAI CLIP ViT-B/32")
-
         self.text_model = SentenceTransformer(self.model, device=self.device)
         self.image_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
 
@@ -204,6 +198,9 @@ class ImageSearcher:
 
         # ✍️ Καταγραφή σε log file (append mode)
         with open(log_file, "a", encoding="utf-8") as f:
+            f.write("🚀 Using hybrid setup: \n")
+            f.write(f"🧠 Text encoder: {self.model} \n")
+            f.write("🖼️ Image encoder: OpenAI CLIP ViT-B/32 \n")
             f.write("=" * 80 + "\n")
             f.write(f"🕓 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Query: {query}\n")
