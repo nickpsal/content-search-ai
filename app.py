@@ -11,12 +11,8 @@ st.title("🔎 Search Content in Multimedia Digital Archives using Artificial In
 # ---- Initial ----
 DATA_DIR = "./data"
 model = Model()
+model.download_model()
 searcher = ImageSearcher(data_dir=DATA_DIR)
-
-# ---- DOWNLOAD MODEL ----
-if st.button("📦 Download Model"):
-    model.download_model()
-    st.success("✅ The Fine Tuned Model downloaded and unzipped successfully!")
 
 # ---- DOWNLOAD COCO DATA ----
 if st.button("📦 Download COCO Dataset"):
