@@ -3,8 +3,9 @@ import re
 import fitz  # PyMuPDF
 import torch
 from tqdm import tqdm
+import gdown
+import zipfile
 from sentence_transformers import SentenceTransformer, util
-
 
 def word_overlap(a, b):
     """Calculate the number of shared words between two text segments."""
@@ -12,14 +13,12 @@ def word_overlap(a, b):
     b_words = set(b.lower().split())
     return len(a_words.intersection(b_words))
 
-
 class PDFSearcher:
     """
     PDF Similarity Searcher using a fine-tuned M-CLIP model.
     Works only with machine-readable PDFs (not scanned images).
     Performs per-page semantic comparison for higher precision.
     """
-
     def __init__(self, model_path="./models/mclip_finetuned_coco_ready", device=None):
         self.model_path = model_path
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,6 +26,42 @@ class PDFSearcher:
         self.model = SentenceTransformer(model_path, device=self.device)
         self.min_score = 0.90  # minimum similarity threshold
         self.min_chars = 80    # minimum number of characters per page
+
+    # ==========================================================
+    # Download data pdf folder
+    # ==========================================================
+    @staticmethod
+    def download_pdf_data():
+        data_id = "1C4svye202Tt0cwK-tXY39QBQpyMioW_k"
+        os.makedirs("./data", exist_ok=True)
+        url = f"https://drive.google.com/uc?id={data_id}"
+        output_path = "./data/pdf_data.zip"
+        data_zip = os.path.join("./data", "pdf_data.zip")
+        pdf_dir = os.path.abspath("./data")
+
+        if len(os.listdir(pdf_dir)) > 0:
+            print(f"✅ Model already exists in {pdf_dir}")
+            return
+
+        #Download Pdfs Data Folder from Google Drive
+        print("\n📥 Downloading model from Google Drive...")
+        gdown.download(url, output_path, quiet=False, fuzzy=True)
+        print(f"✅ File saved to: {output_path}")
+
+        # Checking if it is a valid zip
+        if not zipfile.is_zipfile(data_zip):
+            print("❌ Downloaded file is not a valid ZIP. Check the Google Drive link ID.")
+            return
+
+        # eExtracting zip
+        with zipfile.ZipFile(data_zip, 'r') as zip_ref:
+            files = zip_ref.namelist()
+            print(f"\n📦 Extracting {len(files)} files into {pdf_dir}...")
+            for file in tqdm(files, desc="Extracting", unit="file"):
+                zip_ref.extract(file, pdf_dir)
+
+        os.remove(data_zip)
+        print(f"✅ Model extracted successfully into {data_zip}")
 
     # ==========================================================
     # Extract page embeddings (no OCR)
