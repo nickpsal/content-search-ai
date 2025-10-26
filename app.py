@@ -66,7 +66,7 @@ st.markdown("""
 # 🚀 INITIALIZATION
 # ======================================================
 st.title("🔎 Search Content in Multimedia Digital Archives using AI")
-st.markdown("Version **1.4**")
+st.markdown("Version **1.5**")
 
 DATA_DIR = "./data"
 model = Model()
@@ -129,7 +129,7 @@ with tabs[1]:
     - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
 
     ### 🧩 Technologies Used
-    - **Python 3.11**
+    - **Python 3.10**
     - **Streamlit** for the interactive user interface
     - **PyTorch** and **Sentence-Transformers (M-CLIP)**
     - **OpenAI CLIP** for visual representation learning
