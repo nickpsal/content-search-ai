@@ -1,19 +1,20 @@
-from core import ImageSearcher
-from core import Model
-import streamlit as st
-from PIL import Image
 import os
 import time
 import base64
+import streamlit as st
+from core import ImageSearcher, PDFSearcher, Model
 
 # ======================================================
-# 🌙 STYLING
+# 🧠 STREAMLIT CONFIGURATION
 # ======================================================
 st.set_page_config(
-    page_title="Search Content in Multimedia Digital Archives using Artificial Intelligence",
+    page_title="Search Content in Multimedia Digital Archives using AI",
     layout="wide"
 )
 
+# ======================================================
+# 🎨 CUSTOM CSS STYLING
+# ======================================================
 st.markdown("""
 <style>
 .result-grid {
@@ -62,9 +63,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ======================================================
-# 🧠 INIT
+# 🚀 INITIALIZATION
 # ======================================================
-st.title("🔎 Search Content in Multimedia Digital Archives using Artificial Intelligence")
+st.title("🔎 Search Content in Multimedia Digital Archives using AI")
 st.markdown("Version **1.4**")
 
 DATA_DIR = "./data"
@@ -73,9 +74,18 @@ model.download_model()
 searcher = ImageSearcher(data_dir=DATA_DIR)
 
 # ======================================================
-# 🗂️ TABS
+# 🧭 TABS SETUP
 # ======================================================
-tabs = st.tabs(["⚙️ Settings", "💬 Text Search", "🖼️ Image Search", "🎧 Audio Search", "🎥 Video Search"])
+tabs = st.tabs([
+    "⚙️ Settings",
+    "ℹ️ App Info",
+    "💬 Text → Image",
+    "🖼️ Image → Image",
+    "📚 PDF → PDF",
+    "💬 Text → PDF",
+    "🎧 Audio Search",
+    "🎥 Video Search"
+])
 
 # ======================================================
 # ⚙️ SETTINGS TAB
@@ -106,14 +116,48 @@ with tabs[0]:
     st.info(f"Currently set to show up to {top_k} results per query.")
 
 # ======================================================
-# 💬 TEXT → IMAGE SEARCH
+# ℹ️ APP INFO TAB
 # ======================================================
 with tabs[1]:
+    st.subheader("ℹ️ Application Information")
+    st.markdown("""
+       ### 🧠 About This Project
+       This system demonstrates **content-based retrieval** across multiple media types:
+       - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
+       - **PDF Documents** — via semantic similarity analysis (page-level)
+       - **Audio & Video** — planned future extensions (Whisper & visual feature extraction)
+
+       ### 🧩 Technologies Used
+       - **Python 3.10**
+       - **Streamlit** for interactive interface
+       - **PyTorch** and **Sentence-Transformers (M-CLIP)**
+       - **OpenAI CLIP** for visual embeddings
+       - **PyMuPDF** for PDF parsing
+       - **TQDM**, **PIL**, and **NumPy** utilities
+
+       ### ⚙️ Model Details
+       The system uses a **fine-tuned Multilingual CLIP model (ViT-B/32)**  
+       trained on the **COCO dataset** for semantic cross-modal retrieval.
+
+       ### 👩‍💻 Developer
+       **Nikolaos Psaltakis**  
+       University of West Attica  
+       Department of Informatics and Computer Engineering  
+       2025 – Bachelor Thesis Project
+
+       ### 📘 Version
+       **v1.5 — Stable Release (October 2025)**
+       """)
+
+# ======================================================
+# 💬 TEXT → IMAGE SEARCH
+# ======================================================
+with tabs[2]:
     st.subheader("💬 Text-to-Image Search")
     query = st.text_input("✍️ Enter your search query")
 
     if st.button("🔎 Run Text Search"):
-        if query.strip() == "":
+        if not query.strip():
             st.warning("⚠️ Please enter a search phrase.")
         else:
             st.info(f"Searching for: '{query}' ...")
@@ -133,8 +177,7 @@ with tabs[1]:
                     source = "COCO" if "val2017" in img_path else "Other"
 
                     with open(img_path, "rb") as f:
-                        img_bytes = f.read()
-                    b64 = base64.b64encode(img_bytes).decode()
+                        b64 = base64.b64encode(f.read()).decode()
 
                     cards.append(f"""
                     <div class='result-card'>
@@ -146,16 +189,14 @@ with tabs[1]:
                     </div>
                     """)
 
-                html = "<div class='result-grid'>" + "".join(cards) + "</div>"
-                st.markdown(html, unsafe_allow_html=True)
+                st.markdown("<div class='result-grid'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
 # ======================================================
-with tabs[2]:
+with tabs[3]:
     st.subheader("🖼️ Image-to-Image Search")
-
-    uploaded_file = st.file_uploader("📤 Upload an image to find similar ones", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png"])
 
     if uploaded_file is not None:
         query_image_path = os.path.join("data/query_images", uploaded_file.name)
@@ -167,9 +208,9 @@ with tabs[2]:
         st.image(query_image_path, caption="📸 Uploaded Image", width=250)
 
         if st.button("🔍 Run Image Search"):
-            st.info("Analyzing image and finding similar ones...")
+            st.info("Analyzing and comparing image...")
             start = time.time()
-            results = searcher.search_by_image(query_image_path, top_k=top_k, verbose=False)
+            results = searcher.search_by_image(query_image_path, top_k=top_k)
             elapsed = time.time() - start
 
             if not results:
@@ -184,8 +225,7 @@ with tabs[2]:
                     source = "COCO" if "val2017" in img_path else "Other"
 
                     with open(img_path, "rb") as f:
-                        img_bytes = f.read()
-                    b64 = base64.b64encode(img_bytes).decode()
+                        b64 = base64.b64encode(f.read()).decode()
 
                     cards.append(f"""
                     <div class='result-card'>
@@ -197,19 +237,101 @@ with tabs[2]:
                     </div>
                     """)
 
-                html = "<div class='result-grid'>" + "".join(cards) + "</div>"
-                st.markdown(html, unsafe_allow_html=True)
+                st.markdown("<div class='result-grid'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 # ======================================================
-# 🎧 AUDIO SEARCH (Whisper placeholder)
-# ======================================================
-with tabs[3]:
-    st.subheader("🎥 Audio Search (Future Feature)")
-    st.info("Audio similarity search will be added in the next version.")
-
-# ======================================================
-# 🎥 VIDEO SEARCH (Future)
+# 📚 PDF → PDF SEARCH
 # ======================================================
 with tabs[4]:
-    st.subheader("🎥 Video Search (Future Feature)")
-    st.info("Video similarity search will be added in the next version.")
+    st.subheader("📚 PDF-to-PDF Similarity Search")
+
+    uploaded_pdf = st.file_uploader("📤 Upload a PDF to compare", type=["pdf"])
+    base_folder = "./data/pdfs"
+    query_folder = "./data/query"
+    os.makedirs(base_folder, exist_ok=True)
+    os.makedirs(query_folder, exist_ok=True)
+
+    if uploaded_pdf is not None:
+        query_path = os.path.join(query_folder, uploaded_pdf.name)
+        with open(query_path, "wb") as f:
+            f.write(uploaded_pdf.getbuffer())
+
+        st.success(f"✅ Uploaded: {uploaded_pdf.name}")
+        st.info("Analyzing document similarity...")
+
+        searcher = PDFSearcher("./models/mclip_finetuned_coco_ready")
+
+        with st.spinner("Processing and comparing PDFs..."):
+            results = searcher.search_similar_pdfs(query_pdf=query_path, folder=base_folder, top_k=top_k)
+
+        if not results:
+            st.warning("❌ No strong matches found.")
+        else:
+            st.success(f"✅ Found {len(results)} similar documents.")
+            for r in results:
+                color = "🟢" if r["score"] >= 0.98 else "🟠" if r["score"] >= 0.95 else "🔴"
+                st.markdown(f"### {color} {r['file']} — Page {r['page']} — Score: `{r['score']:.4f}`")
+                st.caption(f"**Snippet:** {r['snippet']}")
+                pdf_path = os.path.join(base_folder, r["file"])
+                with open(pdf_path, "rb") as f:
+                    pdf_data = f.read()
+                st.download_button(
+                    label=f"⬇️ Download {r['file']}",
+                    data=pdf_data,
+                    file_name=r["file"],
+                    mime="application/pdf"
+                )
+                st.markdown("---")
+
+# ======================================================
+# 💬 TEXT → PDF SEARCH
+# ======================================================
+with tabs[5]:
+    st.subheader("💬 Text-to-PDF Semantic Search")
+    query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
+
+    base_folder = "./data/pdfs"
+    os.makedirs(base_folder, exist_ok=True)
+
+    if st.button("🔍 Run Text → PDF Search"):
+        if not query_text.strip():
+            st.warning("⚠️ Please enter text before searching.")
+        else:
+            st.info(f"Searching for: '{query_text}' ...")
+
+            searcher = PDFSearcher("./models/mclip_finetuned_coco_ready")
+
+            with st.spinner("Analyzing PDFs..."):
+                results = searcher.search_by_text(query_text, folder=base_folder, top_k=top_k)
+
+            if not results:
+                st.warning("No matching PDFs found.")
+            else:
+                st.success(f"✅ Found {len(results)} relevant PDFs!")
+                for r in results:
+                    st.markdown(f"### 📄 {r['file']} (Page {r['page']}) — Score: `{r['score']:.4f}`")
+                    st.caption(f"**Snippet:** {r['snippet']}")
+                    pdf_path = os.path.join(base_folder, r["file"])
+                    with open(pdf_path, "rb") as f:
+                        pdf_data = f.read()
+                    st.download_button(
+                        label=f"⬇️ Download {r['file']}",
+                        data=pdf_data,
+                        file_name=r["file"],
+                        mime="application/pdf",
+                        key=f"download_{r['file']}_{r['page']}"
+                    )
+
+# ======================================================
+# 🎧 AUDIO SEARCH (PLACEHOLDER)
+# ======================================================
+with tabs[6]:
+    st.subheader("🎧 Audio Search (Coming Soon)")
+    st.info("Audio similarity search will be implemented in the next release.")
+
+# ======================================================
+# 🎥 VIDEO SEARCH (PLACEHOLDER)
+# ======================================================
+with tabs[7]:
+    st.subheader("🎥 Video Search (Coming Soon)")
+    st.info("Video similarity search will be implemented in a future version.")
