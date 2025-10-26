@@ -1,37 +1,52 @@
 name: content-search-ai
 channels:
-  - defaults
-  - conda-forge
   - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
 
 dependencies:
-  - python=3.10
+  # --- Core Environment ---
+  - python=3.11
   - pip
   - numpy
-  - matplotlib
   - pandas
+  - matplotlib
   - tqdm
   - pillow
-  - torchvision
-  - pytorch
-  - torchaudio
-  - pycocotools
-  - ipykernel
-  - jupyterlab
-  - faiss-cpu
+  - requests
   - ffmpeg
 
+  # --- PyTorch & Vision Stack ---
+  - pytorch>=2.4.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1  # auto fallback to CPU if no GPU
+  - pycocotools
+  - faiss-cpu
+
+  # --- Jupyter Environment ---
+  - ipykernel
+  - jupyterlab
+
+  # --- pip-only Dependencies ---
   - pip:
-      - ftfy
-      - regex
-      - opencv-python
-      - pygame
-      - deep-translator
-      - tiktoken
-      - requests
-      - streamlit
-      - transformers>=4.44.0
+      # --- Core AI Libraries ---
+      - transformers>=4.45.0
       - sentence-transformers>=3.0.0
       - huggingface-hub
       - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
+
+      # --- App & Interface ---
+      - streamlit>=1.38.0
+      - opencv-python
+      - deep-translator
+      - pygame
+
+      # --- NLP & Utilities ---
+      - ftfy
+      - regex
+      - tiktoken
+
+      # --- Whisper for Audio ---
       - openai-whisper

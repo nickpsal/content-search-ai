@@ -120,34 +120,78 @@ with tabs[0]:
 # ======================================================
 with tabs[1]:
     st.subheader("ℹ️ Application Information")
+
     st.markdown("""
-       ### 🧠 About This Project
-       This system demonstrates **content-based retrieval** across multiple media types:
-       - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
-       - **PDF Documents** — via semantic similarity analysis (page-level)
-       - **Audio & Video** — planned future extensions (Whisper & visual feature extraction)
+    ### 🧠 About This Project
+    This system demonstrates **content-based retrieval** across multiple media types:
+    - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
+    - **PDF Documents** — using semantic page-level similarity
+    - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
 
-       ### 🧩 Technologies Used
-       - **Python 3.10**
-       - **Streamlit** for interactive interface
-       - **PyTorch** and **Sentence-Transformers (M-CLIP)**
-       - **OpenAI CLIP** for visual embeddings
-       - **PyMuPDF** for PDF parsing
-       - **TQDM**, **PIL**, and **NumPy** utilities
+    ### 🧩 Technologies Used
+    - **Python 3.11**
+    - **Streamlit** for the interactive user interface
+    - **PyTorch** and **Sentence-Transformers (M-CLIP)**
+    - **OpenAI CLIP** for visual representation learning
+    - **PyMuPDF** for text extraction from PDFs
+    - **TQDM**, **PIL**, and **NumPy** for utilities and preprocessing
 
-       ### ⚙️ Model Details
-       The system uses a **fine-tuned Multilingual CLIP model (ViT-B/32)**  
-       trained on the **COCO dataset** for semantic cross-modal retrieval.
+    ### ⚙️ Model Details
+    The system employs a **fine-tuned Multilingual CLIP (ViT-B/32)** model  
+    trained on the **COCO dataset** for robust multilingual text-image retrieval.
 
-       ### 👩‍💻 Developer
-       **Nikolaos Psaltakis**  
-       University of West Attica  
-       Department of Informatics and Computer Engineering  
-       2025 – Bachelor Thesis Project
+    ### 👩‍💻 Developer
+    **Nikolaos Psaltakis**  
+    University of West Attica  
+    Department of Informatics and Computer Engineering  
+    Bachelor Thesis Project – 2025
 
-       ### 📘 Version
-       **v1.5 — Stable Release (October 2025)**
-       """)
+    ---
+    """)
+
+    st.subheader("📘 Version History")
+
+    st.markdown("""
+    #### 🟢 **v1.5 – Stable Release (October 2025)**
+    - Added **PDF-to-PDF** and **Text-to-PDF** semantic search  
+    - Added **App Info tab** with About, Technologies, and Version History sections  
+    - Improved **Streamlit UI design** and English and Greek documentation  
+    - Refined **PDF similarity filtering** for cleaner results  
+    - Updated **hybrid CLIP + M-CLIP pipeline**  
+    - General code cleanup across `core/` modules  
+
+    #### 🟠 **v1.4 – Core Functionality Integration (September 2025)**
+    - Integrated **Streamlit tabs** for modular UI  
+    - Optimized embeddings extraction and caching  
+    - Added Settings tab for dataset and embedding control  
+
+    #### 🟡 **v1.3 – Multilingual CLIP Implementation (August 2025)**
+    - Integrated **M-CLIP (multilingual CLIP)** fine-tuning  
+    - Added **cross-modal retrieval** for English and Greek queries  
+    - Introduced initial PDF document similarity module  
+
+    #### 🔵 **v1.2 – Visual Search Prototype (June 2025)**
+    - Implemented **text-to-image** and **image-to-image** retrieval  
+    - Added COCO dataset integration  
+    - Established embedding storage and search indexing  
+
+    #### ⚪ **v1.1 – Initial Research Setup (May 2025)**
+    - Set up development environment  
+    - Implemented model loading and preprocessing pipelines  
+    - Built baseline retrieval testing framework  
+
+    #### ⚫ **v1.0 – Project Initialization (April 2025)**
+    - Defined thesis objectives and dataset structure  
+    - Started architecture planning and repository setup  
+    """)
+
+    st.markdown("---")
+    st.markdown("""
+    🧾 **Next Planned Updates**
+    - 🎧 Integrate **Whisper** for audio-to-text retrieval  
+    - 🎥 Add **video similarity search** using frame-level embeddings  
+    - ☁️ Enable **model caching and web deployment** on Streamlit Cloud  
+    """)
 
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
