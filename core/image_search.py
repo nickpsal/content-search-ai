@@ -218,3 +218,66 @@ class ImageSearcher:
             f.write("\n\n")
 
         return results[:top_k]
+
+    # ---------------------------------------------------------------------
+    # SEARCH IMAGE → IMAGE
+    # ---------------------------------------------------------------------
+    def search_by_image(self, query_image_path: str, top_k=5, log_file="search_log.txt", verbose=True):
+        if not os.path.exists(query_image_path):
+            raise FileNotFoundError(f"❌ Query image not found: {query_image_path}")
+
+        # 🔹 Φόρτωση όλων των image embeddings
+        image_embeddings = {}
+        if os.path.exists(self.image_embed_path):
+            image_embeddings.update(torch.load(self.image_embed_path, weights_only=True))
+        if os.path.exists(self.extra_image_embed_path):
+            image_embeddings.update(torch.load(self.extra_image_embed_path, weights_only=True))
+
+        if not image_embeddings:
+            raise FileNotFoundError("❌ No image embeddings found. Run extract_image_embeddings() first.")
+
+        print(f"✅ Loaded {len(image_embeddings)} image embeddings")
+
+        # 🔹 Υπολογισμός embedding της query εικόνας
+        image = self.preprocess(Image.open(query_image_path).convert("RGB")).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            query_embedding = self.image_model.encode_image(image)
+            query_embedding /= query_embedding.norm(dim=-1, keepdim=True)
+
+        # 🔹 Υπολογισμός ομοιότητας
+        results = []
+        start_time = time.time()
+        for name, img_emb in image_embeddings.items():
+            similarity = torch.cosine_similarity(query_embedding, img_emb, dim=-1)
+            path = os.path.join(self.image_dir, name)
+            if not os.path.exists(path):
+                path = os.path.join(self.extra_image_dir, name)
+
+            results.append({
+                "path": path,
+                "score": similarity.item(),
+                "name": name
+            })
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        elapsed = time.time() - start_time
+
+        # 🔹 Εμφάνιση top-k
+        print(f"\n🔎 Top {top_k} visually similar images for: {os.path.basename(query_image_path)}\n")
+        for i, r in enumerate(results[:top_k]):
+            print(f"{i + 1}. {r['path']}  (score={r['score']:.4f})")
+        print(f"\n⏱️ Search completed in {elapsed:.2f}s")
+
+        # ✍️ Καταγραφή σε log file
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write("🚀 IMAGE → IMAGE SEARCH\n")
+            f.write(f"🕓 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Query Image: {query_image_path}\n")
+            f.write(f"Total Images: {len(image_embeddings)}\n")
+            f.write(f"Search Time: {elapsed:.2f}s\n\n")
+            for i, r in enumerate(results[:top_k]):
+                f.write(f"  {i + 1}. {r['name']} (score={r['score']:.4f})\n")
+            f.write("\n" + "=" * 80 + "\n\n")
+
+        return results[:top_k]
+
