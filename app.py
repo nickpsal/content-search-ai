@@ -209,31 +209,18 @@ with tabs[2]:
             results = searcher.search(query, top_k=top_k, verbose=False)
             elapsed = time.time() - start
 
-            if not results:
-                st.warning("No results found.")
-            else:
-                st.success(f"✅ Found {len(results)} results in {elapsed:.2f}s")
-
-                cards = []
-                for r in results:
+            if results:
+                cols = st.columns(top_k)
+                for idx, r in enumerate(results[:top_k]):
                     img_path = r["path"]
                     score = r["score"]
                     source = "COCO" if "val2017" in img_path else "Other"
 
-                    with open(img_path, "rb") as f:
-                        b64 = base64.b64encode(f.read()).decode()
-
-                    cards.append(f"""
-                    <div class='result-card'>
-                        <img src="data:image/jpeg;base64,{b64}" alt="{os.path.basename(img_path)}"/>
-                        <div class="overlay">
-                            <div class='score-label'>Similarity: {score*100:.2f}%</div>
-                            <div class='source-label'>Dataset: {source}</div>
-                        </div>
-                    </div>
-                    """)
-
-                st.markdown("<div class='result-grid'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
+                    cols[idx].image(
+                        img_path,
+                        caption=f"Similarity: {score * 100:.2f}% | Dataset: {source}",
+                        use_container_width=True
+                    )
 
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
@@ -261,27 +248,17 @@ with tabs[3]:
                 st.warning("No similar images found.")
             else:
                 st.success(f"✅ Found {len(results)} similar images in {elapsed:.2f}s")
-
-                cards = []
-                for r in results:
+                cols = st.columns(top_k)
+                for idx, r in enumerate(results[:top_k]):
                     img_path = r["path"]
                     score = r["score"]
                     source = "COCO" if "val2017" in img_path else "Other"
 
-                    with open(img_path, "rb") as f:
-                        b64 = base64.b64encode(f.read()).decode()
-
-                    cards.append(f"""
-                    <div class='result-card'>
-                        <img src="data:image/jpeg;base64,{b64}" alt="{os.path.basename(img_path)}"/>
-                        <div class="overlay">
-                            <div class='score-label'>Similarity: {score*100:.2f}%</div>
-                            <div class='source-label'>Dataset: {source}</div>
-                        </div>
-                    </div>
-                    """)
-
-                st.markdown("<div class='result-grid'>" + "".join(cards) + "</div>", unsafe_allow_html=True)
+                    cols[idx].image(
+                        img_path,
+                        caption=f"Similarity: {score * 100:.2f}% | Dataset: {source}",
+                        use_container_width=True
+                    )
 
 # ======================================================
 # 📚 PDF → PDF SEARCH
