@@ -1,7 +1,6 @@
 import os
 import time
 import streamlit as st
-from PIL import Image
 import base64
 from core import ImageSearcher, PDFSearcher, Model
 
@@ -91,7 +90,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-
 DATA_DIR = "./data"
 model = Model()
 model.download_model()
@@ -115,109 +113,105 @@ tabs = st.tabs([
 ])
 
 # ======================================================
-# ⚙️ SETTINGS TAB
+# ⚙️ SETTINGS TAB WITH ACCORDIONS
 # ======================================================
 with tabs[0]:
-    st.subheader("⚙️ Dataset & Embeddings Configuration")
+    st.subheader("⚙️ Application Settings")
+    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=False):
+        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
-    col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
+        with col1:
+            if st.button("📦 Download COCO Dataset", use_container_width=True):
+                searcher.download_coco_data()
+                st.success("✅ COCO dataset downloaded successfully!")
 
-    with col1:
-        if st.button("📦 Download COCO Dataset", use_container_width=True):
-            searcher.download_coco_data()
-            st.success("✅ COCO dataset downloaded successfully!")
+        with col2:
+            if st.button("🧠 Extract Image Embeddings", use_container_width=True):
+                searcher.extract_image_embeddings()
+                st.success("✅ Image embeddings created successfully!")
 
-    with col2:
-        if st.button("🧠 Extract Image Embeddings", use_container_width=True):
-            searcher.extract_image_embeddings()
-            st.success("✅ Image embeddings created successfully!")
+        with col3:
+            if st.button("💬 Extract Caption Embeddings", use_container_width=True):
+                searcher.extract_text_embeddings()
+                st.success("✅ Caption embeddings created successfully!")
 
-    with col3:
-        if st.button("💬 Extract Caption Embeddings", use_container_width=True):
-            searcher.extract_text_embeddings()
-            st.success("✅ Caption embeddings created successfully!")
-
-    st.divider()
-    st.subheader("🔧 Display Settings")
-    top_k = st.slider("Select number of results per search", 3, 30, 5)
-    st.info(f"Currently set to show up to {top_k} results per query.")
+    with st.expander("🔧 Display Settings", expanded=False):
+        top_k = st.slider("Select number of results per search", 3, 30, 5)
+        st.info(f"Currently set to show up to {top_k} results per query.")
 
 # ======================================================
 # ℹ️ APP INFO TAB
 # ======================================================
 with tabs[1]:
     st.subheader("ℹ️ Application Information")
+    with st.expander("🧠 About This Project", expanded=True):
+        st.markdown("""
+        This system demonstrates **content-based retrieval** across multiple media types:
+        - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
+        - **PDF Documents** — using semantic page-level similarity
+        - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
 
-    st.markdown("""
-    ### 🧠 About This Project
-    This system demonstrates **content-based retrieval** across multiple media types:
-    - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
-    - **PDF Documents** — using semantic page-level similarity
-    - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
+        ### 🧩 Technologies Used
+        - **Python 3.10**
+        - **Streamlit** for the interactive user interface
+        - **PyTorch** and **Sentence-Transformers (M-CLIP)**
+        - **OpenAI CLIP** for visual representation learning
+        - **PyMuPDF** for text extraction from PDFs
+        - **TQDM**, **PIL**, and **NumPy** for utilities and preprocessing
 
-    ### 🧩 Technologies Used
-    - **Python 3.10**
-    - **Streamlit** for the interactive user interface
-    - **PyTorch** and **Sentence-Transformers (M-CLIP)**
-    - **OpenAI CLIP** for visual representation learning
-    - **PyMuPDF** for text extraction from PDFs
-    - **TQDM**, **PIL**, and **NumPy** for utilities and preprocessing
+        ### ⚙️ Model Details
+        The system employs a **fine-tuned Multilingual CLIP (ViT-B/32)** model  
+        trained on the **COCO dataset** for robust multilingual text-image retrieval.
 
-    ### ⚙️ Model Details
-    The system employs a **fine-tuned Multilingual CLIP (ViT-B/32)** model  
-    trained on the **COCO dataset** for robust multilingual text-image retrieval.
+        ### 👩‍💻 Developer
+        **Nikolaos Psaltakis**  
+        University of West Attica  
+        Department of Informatics and Computer Engineering  
+        Bachelor Thesis Project – (c) 2025
 
-    ### 👩‍💻 Developer
-    **Nikolaos Psaltakis**  
-    University of West Attica  
-    Department of Informatics and Computer Engineering  
-    Bachelor Thesis Project – (c) 2025
+        ---
+        """)
 
-    ---
-    """)
+    with st.expander("📘 Version History", expanded=False):
+        st.markdown("""
+            #### 🟢 **v1.5 – Stable Release (October 2025)**
+            - Added **PDF-to-PDF** and **Text-to-PDF** semantic search  
+            - Added **App Info tab** with About, Technologies, and Version History sections  
+            - Improved **Streamlit UI design** and English and Greek documentation  
+            - Refined **PDF similarity filtering** for cleaner results  
+            - Updated **hybrid CLIP + M-CLIP pipeline**  
+            - General code cleanup across `core/` modules  
 
-    st.subheader("📘 Version History")
+            #### 🟠 **v1.4 – Core Functionality Integration (September 2025)**
+            - Integrated **Streamlit tabs** for modular UI  
+            - Optimized embeddings extraction and caching  
+            - Added Settings tab for dataset and embedding control  
 
-    st.markdown("""
-    #### 🟢 **v1.5 – Stable Release (October 2025)**
-    - Added **PDF-to-PDF** and **Text-to-PDF** semantic search  
-    - Added **App Info tab** with About, Technologies, and Version History sections  
-    - Improved **Streamlit UI design** and English and Greek documentation  
-    - Refined **PDF similarity filtering** for cleaner results  
-    - Updated **hybrid CLIP + M-CLIP pipeline**  
-    - General code cleanup across `core/` modules  
+            #### 🟡 **v1.3 – Multilingual CLIP Implementation (August 2025)**
+            - Integrated **M-CLIP (multilingual CLIP)** fine-tuning  
+            - Added **cross-modal retrieval** for English and Greek queries  
+            - Introduced initial PDF document similarity module  
 
-    #### 🟠 **v1.4 – Core Functionality Integration (September 2025)**
-    - Integrated **Streamlit tabs** for modular UI  
-    - Optimized embeddings extraction and caching  
-    - Added Settings tab for dataset and embedding control  
+            #### 🔵 **v1.2 – Visual Search Prototype (June 2025)**
+            - Implemented **text-to-image** and **image-to-image** retrieval  
+            - Added COCO dataset integration  
+            - Established embedding storage and search indexing  
 
-    #### 🟡 **v1.3 – Multilingual CLIP Implementation (August 2025)**
-    - Integrated **M-CLIP (multilingual CLIP)** fine-tuning  
-    - Added **cross-modal retrieval** for English and Greek queries  
-    - Introduced initial PDF document similarity module  
+            #### ⚪ **v1.1 – Initial Research Setup (May 2025)**
+            - Set up development environment  
+            - Implemented model loading and preprocessing pipelines  
+            - Built baseline retrieval testing framework  
 
-    #### 🔵 **v1.2 – Visual Search Prototype (June 2025)**
-    - Implemented **text-to-image** and **image-to-image** retrieval  
-    - Added COCO dataset integration  
-    - Established embedding storage and search indexing  
+            #### ⚫ **v1.0 – Project Initialization (April 2025)**
+            - Defined thesis objectives and dataset structure  
+            - Started architecture planning and repository setup  
+            """)
 
-    #### ⚪ **v1.1 – Initial Research Setup (May 2025)**
-    - Set up development environment  
-    - Implemented model loading and preprocessing pipelines  
-    - Built baseline retrieval testing framework  
-
-    #### ⚫ **v1.0 – Project Initialization (April 2025)**
-    - Defined thesis objectives and dataset structure  
-    - Started architecture planning and repository setup  
-    """)
-
-    st.markdown("---")
-    st.markdown("""
-    🧾 **Next Planned Updates**
-    - 🎧 Integrate **Whisper** for audio-to-text retrieval  
-    - 🎥 Add **video similarity search** using frame-level embeddings  
-    """)
+    with st.expander("🧾 Next Planned Updates", expanded=False):
+        st.markdown("""
+            - 🎧 Integrate **Whisper** for audio-to-text retrieval  
+            - 🎥 Add **video similarity search** using frame-level embeddings  
+            """)
 
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
