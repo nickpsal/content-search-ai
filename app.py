@@ -192,7 +192,6 @@ with tabs[1]:
     🧾 **Next Planned Updates**
     - 🎧 Integrate **Whisper** for audio-to-text retrieval  
     - 🎥 Add **video similarity search** using frame-level embeddings  
-    - ☁️ Enable **model caching and web deployment** on Streamlit Cloud  
     """)
 
 # ======================================================
