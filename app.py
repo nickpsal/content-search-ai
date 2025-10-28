@@ -1,6 +1,5 @@
 import os
 import time
-import base64
 import streamlit as st
 from core import ImageSearcher, PDFSearcher, Model
 
@@ -73,6 +72,9 @@ model = Model()
 model.download_model()
 searcher = ImageSearcher(data_dir=DATA_DIR)
 
+pdf = PDFSearcher()
+pdf.download_pdf_data()
+
 # ======================================================
 # 🧭 TABS SETUP
 # ======================================================
@@ -144,7 +146,7 @@ with tabs[1]:
     **Nikolaos Psaltakis**  
     University of West Attica  
     Department of Informatics and Computer Engineering  
-    Bachelor Thesis Project – 2025
+    Bachelor Thesis Project – (c) 2025
 
     ---
     """)
