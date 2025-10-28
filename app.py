@@ -102,8 +102,8 @@ pdf.download_pdf_data()
 # 🧭 TABS SETUP
 # ======================================================
 tabs = st.tabs([
+    "ℹ️ Application Info",
     "⚙️ Settings",
-    "ℹ️ App Info",
     "💬 Text → Image",
     "🖼️ Image → Image",
     "📚 PDF → PDF",
@@ -115,7 +115,7 @@ tabs = st.tabs([
 # ======================================================
 # ⚙️ SETTINGS TAB WITH ACCORDIONS
 # ======================================================
-with tabs[0]:
+with tabs[1]:
     st.subheader("⚙️ Application Settings")
     with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=False):
         col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
@@ -142,7 +142,7 @@ with tabs[0]:
 # ======================================================
 # ℹ️ APP INFO TAB
 # ======================================================
-with tabs[1]:
+with tabs[0]:
     st.subheader("ℹ️ Application Information")
     with st.expander("🧠 About This Project", expanded=True):
         st.markdown("""
