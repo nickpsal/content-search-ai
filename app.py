@@ -1,6 +1,8 @@
 import os
 import time
 import streamlit as st
+from PIL import Image
+import base64
 from core import ImageSearcher, PDFSearcher, Model
 
 # ======================================================
@@ -64,8 +66,31 @@ st.markdown("""
 # ======================================================
 # 🚀 INITIALIZATION
 # ======================================================
-st.title("🔎 Search Content in Multimedia Digital Archives using AI")
-st.markdown("Version **1.5**")
+# Path του logo
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(BASE_DIR, "assets", "images", "logo.png")
+
+# Μετατροπή εικόνας σε base64 για inline εμφάνιση
+if os.path.exists(logo_path):
+    with open(logo_path, "rb") as f:
+        logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+else:
+    st.warning(f"⚠️ Logo not found at {logo_path}")
+
+# Εμφάνιση inline logo + text
+st.markdown(f"""
+<div style="display:flex;align-items:center;gap:25px;margin-top:-10px;margin-bottom:20px;">
+    <img src="data:image/png;base64,{logo_base64}" width="100" style="border-radius:10px;"/>
+    <div>
+        <h1 style="margin-bottom:0;">Content Search AI</h1>
+        <p style="margin-top:4px;color:#9aa0a6;font-size:1.1rem;">
+            Search Content in Multimedia Digital Archives using AI
+        </p>
+        <p style="margin-top:-8px;color:#9aa0a6;font-size:0.9rem;">Version 1.5</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 DATA_DIR = "./data"
 model = Model()
