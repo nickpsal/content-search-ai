@@ -40,7 +40,7 @@ class PDFSearcher:
         pdf_dir = os.path.abspath("./data")
 
         if len(os.listdir(pdf_dir)) > 0:
-            print(f"✅ Model already exists in {pdf_dir}")
+            print(f"✅ Pdf Data already exists in {pdf_dir}")
             return
 
         #Download Pdfs Data Folder from Google Drive
