@@ -1,7 +1,6 @@
 name: content-search-ai
 channels:
   - pytorch
-  - nvidia
   - conda-forge
   - defaults
 
@@ -17,11 +16,11 @@ dependencies:
   - requests
   - ffmpeg
 
-  # --- PyTorch & Vision Stack ---
-  - pytorch>=2.4.0
-  - torchvision
-  - torchaudio
-  - pytorch-cuda=12.1  # auto fallback to CPU if no GPU
+  # --- PyTorch & Vision Stack (CPU only, synced versions) ---
+  - pytorch=2.4.1
+  - torchvision=0.19.1
+  - torchaudio=2.4.1
+  - cpuonly
   - pycocotools
   - faiss-cpu
 
@@ -47,6 +46,8 @@ dependencies:
       - ftfy
       - regex
       - tiktoken
+      - gdown          # ✅ downlaod google drive
+      - PyMuPDF        # ✅ fitz for pdf
 
       # --- Whisper for Audio ---
       - openai-whisper
