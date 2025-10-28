@@ -46,8 +46,8 @@ dependencies:
       - ftfy
       - regex
       - tiktoken
-      - gdown          # ✅ για κατέβασμα από Google Drive
-      - PyMuPDF        # ✅ παρέχει το module 'fitz' για PDF επεξεργασία
+      - gdown          # ✅ downlaod google drive
+      - PyMuPDF        # ✅ fitz for pdf
 
       # --- Whisper for Audio ---
       - openai-whisper
