@@ -103,13 +103,13 @@ pdf.download_pdf_data()
 # ======================================================
 tabs = st.tabs([
     "ℹ️ Application Info",
-    "⚙️ Settings",
-    "💬 Text → Image",
-    "🖼️ Image → Image",
-    "📚 PDF → PDF",
-    "💬 Text → PDF",
-    "🎧 Audio Search",
-    "🎥 Video Search"
+    "⚙️ Application Settings",
+    "💬 Search: Text → Image",
+    "🖼️ Search: Image → Image",
+    "📚 Search: PDF → PDF",
+    "💬 Search: Text → PDF",
+    "🎧 Search: Audio Search",
+    "🎥 Search: Video Search"
 ])
 
 # ======================================================
@@ -146,30 +146,28 @@ with tabs[0]:
     st.subheader("ℹ️ Application Information")
     with st.expander("🧠 About This Project", expanded=True):
         st.markdown("""
-        This system demonstrates **content-based retrieval** across multiple media types:
-        - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
-        - **PDF Documents** — using semantic page-level similarity
-        - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
-
-        ### 🧩 Technologies Used
-        - **Python 3.10**
-        - **Streamlit** for the interactive user interface
-        - **PyTorch** and **Sentence-Transformers (M-CLIP)**
-        - **OpenAI CLIP** for visual representation learning
-        - **PyMuPDF** for text extraction from PDFs
-        - **TQDM**, **PIL**, and **NumPy** for utilities and preprocessing
-
-        ### ⚙️ Model Details
-        The system employs a **fine-tuned Multilingual CLIP (ViT-B/32)** model  
-        trained on the **COCO dataset** for robust multilingual text-image retrieval.
-
-        ### 👩‍💻 Developer
-        **Nikolaos Psaltakis**  
-        University of West Attica  
-        Department of Informatics and Computer Engineering  
-        Bachelor Thesis Project – (c) 2025
-
-        ---
+            This system demonstrates **content-based retrieval** across multiple media types:
+            - **Images** — via multilingual CLIP embeddings (text-to-image & image-to-image)
+            - **PDF Documents** — using semantic page-level similarity
+            - **Audio & Video** — planned future extensions (Whisper & visual embedding extraction)
+    
+            ### 🧩 Technologies Used
+            - **Python 3.11**
+            - **Streamlit** for the interactive user interface
+            - **PyTorch** and **Sentence-Transformers (M-CLIP)**
+            - **OpenAI CLIP** for visual representation learning
+            - **PyMuPDF** for text extraction from PDFs
+            - **TQDM**, **PIL**, and **NumPy** for utilities and preprocessing
+    
+            ### ⚙️ Model Details
+            The system employs a **fine-tuned Multilingual CLIP (ViT-B/32)** model  
+            trained on the **COCO dataset** for robust multilingual text-image retrieval.
+    
+            ### 👩‍💻 Developer
+            **Nikolaos Psaltakis**  
+            University of West Attica  
+            Department of Informatics and Computer Engineering  
+            Bachelor Thesis Project – (c) 2025
         """)
 
     with st.expander("📘 Version History", expanded=False):
