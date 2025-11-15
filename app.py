@@ -2,7 +2,7 @@ import os
 import time
 import streamlit as st
 import base64
-from core import ImageSearcher, PDFSearcher, Model
+from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
 
 # ======================================================
 # 🧠 STREAMLIT CONFIGURATION
@@ -94,6 +94,7 @@ DATA_DIR = "./data"
 model = Model()
 model.download_model()
 searcher = ImageSearcher(data_dir=DATA_DIR)
+audio = AudioSearcher()
 
 pdf = PDFSearcher()
 pdf.download_pdf_data()
@@ -117,7 +118,11 @@ tabs = st.tabs([
 # ======================================================
 with tabs[1]:
     st.subheader("⚙️ Application Settings")
+    # ------------------------------------------------------
+    # DATASET & EMBEDDINGS CONFIG
+    # ------------------------------------------------------
     with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=False):
+        st.markdown("### 🎧 Image Processing")
         col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
         with col1:
@@ -135,6 +140,28 @@ with tabs[1]:
                 searcher.extract_text_embeddings()
                 st.success("✅ Caption embeddings created successfully!")
 
+        # ---------------------------------------------
+        # NEW ROW — AUDIO
+        # ---------------------------------------------
+        st.markdown("### 🎧 Audio Processing")
+
+        a1, a2, _ = st.columns([1, 1, 1], gap="medium")
+
+        with a1:
+            if st.button("🎵 Build Audio Embeddings", use_container_width=True):
+                with st.spinner("Building audio embeddings…"):
+                    audio.build_all_embeddings()
+                st.success("✅ Audio embeddings built!")
+
+        with a2:
+            if st.button("📝 Build Audio Transcripts", use_container_width=True):
+                with st.spinner("Transcribing audio…"):
+                    audio.build_all_transcripts()
+                st.success("✅ Audio transcripts created!")
+
+    # ------------------------------------------------------
+    # DISPLAY SETTINGS
+    # ------------------------------------------------------
     with st.expander("🔧 Display Settings", expanded=False):
         top_k = st.slider("Select number of results per search", 3, 30, 5)
         st.info(f"Currently set to show up to {top_k} results per query.")
