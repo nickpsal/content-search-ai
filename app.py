@@ -109,7 +109,7 @@ tabs = st.tabs([
     "🖼️ Search: Image → Image",
     "📚 Search: PDF → PDF",
     "💬 Search: Text → PDF",
-    "🎧 Search: Audio Search",
+    "🎧 Search: Text → Audio",
     "🎥 Search: Video Search"
 ])
 
@@ -164,7 +164,6 @@ with tabs[1]:
     # ------------------------------------------------------
     with st.expander("🔧 Display Settings", expanded=False):
         top_k = st.slider("Select number of results per search", 3, 30, 5)
-        st.info(f"Currently set to show up to {top_k} results per query.")
 
 # ======================================================
 # ℹ️ APP INFO TAB
@@ -426,8 +425,48 @@ with tabs[5]:
 # 🎧 AUDIO SEARCH (PLACEHOLDER)
 # ======================================================
 with tabs[6]:
-    st.subheader("🎧 Audio Search (Coming Soon)")
-    st.info("Audio similarity search will be implemented in the next release.")
+    st.subheader("🎧 Text-to-Audio Search (Semantic + Keyword Hybrid)")
+
+    query = st.text_input("🔎 Enter your audio search phrase")
+
+    if st.button("Run Audio Search", use_container_width=True):
+        if not query.strip():
+            st.warning("⚠️ Please enter a phrase.")
+        else:
+            with st.spinner("Searching audio…"):
+                results = audio.search_hybrid(query, top_k=top_k)
+
+            if not results:
+                st.error("❌ No matching audio found.")
+            else:
+                st.success(f"✅ Found {len(results)} audio matches!")
+
+                for r in results:
+                    fname = r["filename"]
+                    folder = r["folder"]
+                    semantic = r["semantic"]
+                    kw = r["keyword"]
+                    score = r["score"]
+                    full_path = r["full_path"]   # <-- 🔥 ΧΡΗΣΙΜΟΠΟΙΟΥΜΕ ΤΟ ΕΤΟΙΜΟ PATH
+
+                    st.markdown(f"""
+                    ### 🎵 {fname}
+                    **Folder:** `{folder}`  
+                    🔊 **Semantic Similarity:** `{semantic:.3f}`  
+                    🔍 **Keyword Match:** `{kw}`  
+                    ⭐ **Hybrid Score:** `{score:.3f}`
+                    """)
+
+                    # === AUDIO PLAYER ===
+                    try:
+                        with open(full_path, "rb") as f:
+                            st.audio(f.read(), format="audio/wav")
+                    except Exception as e:
+                        st.error(f"Could not load audio file `{full_path}`: {e}")
+
+                    st.markdown("---")
+
+
 
 # ======================================================
 # 🎥 VIDEO SEARCH (PLACEHOLDER)

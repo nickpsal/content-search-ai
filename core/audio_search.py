@@ -45,8 +45,8 @@ def _safe_load_csv(path: Path):
 class AudioSearcher:
     def __init__(
         self,
-        audio_main="data/AudioWAV",
-        audio_other="data/audio_other",
+        audio_main="data/audio/AudioWAV",
+        audio_other="data/audio/audio_other",
         model_path="models/best_model_audio_emotion_v4.pt",
         mclip_path="models/mclip_finetuned_coco_ready",
         emb_main="data/embeddings/audio_embeddings_main.pt",
@@ -90,24 +90,24 @@ class AudioSearcher:
         self.transcripts_other = None
         self.transcripts = None
 
+    # ---------------------------------------------------------
+    # LOAD MODELS
+    # ---------------------------------------------------------
 
-    # ---------------------------------------------------------
-    # Load models: Whisper encoder + Faster-Whisper + MCLIP
-    # ---------------------------------------------------------
     def _load_models(self):
         print("🔹 Loading Whisper encoder...")
         self.whisper = WhisperModel.from_pretrained("openai/whisper-small").to(self.device)
         self.processor = WhisperProcessor.from_pretrained("openai/whisper-small")
         self.whisper.eval()
 
-        print("🔹 Loading Faster-Whisper (transcription)...")
+        print("🔹 Loading Faster-Whisper (for transcription)...")
         self.fw = FasterWhisper(
-            "small",
+            "medium",
             device=self.device,
             compute_type="float16" if self.device == "cuda" else "int8"
         )
 
-        print("🔹 Loading M-CLIP...")
+        print(f"🧠 Loading M-CLIP model from: {self.mclip_path}")
         self.text_model = SentenceTransformer(str(self.mclip_path)).to(self.device)
         self.text_model.eval()
 
@@ -124,9 +124,8 @@ class AudioSearcher:
         self.text_proj.load_state_dict(ckpt["text_proj"])
         self.text_proj.eval()
 
-
     # ---------------------------------------------------------
-    # Load + preprocess audio
+    # AUDIO LOADING & EMBEDDING
     # ---------------------------------------------------------
     @torch.no_grad()
     def load_audio(self, path: Path):
@@ -135,28 +134,21 @@ class AudioSearcher:
             audio = np.mean(audio, axis=1)
         if sr != 16000:
             audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+        return self.processor(audio, sampling_rate=16000, return_tensors="pt").input_features.to(self.device)
 
-        inputs = self.processor(audio, sampling_rate=16000, return_tensors="pt").input_features.to(self.device)
-        return inputs
-
-
-    # ---------------------------------------------------------
-    # Audio Embeddings
-    # ---------------------------------------------------------
     @torch.no_grad()
     def audio_embedding(self, path: Path):
         try:
-            inputs = self.load_audio(path)
-            feats = self.whisper.encoder(inputs).last_hidden_state.mean(dim=1)
-            proj = self.audio_proj(feats)
+            inp = self.load_audio(path)
+            feat = self.whisper.encoder(inp).last_hidden_state.mean(dim=1)
+            proj = self.audio_proj(feat)
             return F.normalize(proj, p=2, dim=-1).cpu()
         except Exception as e:
             print(f"⚠️ Error embedding {path.name}: {e}")
             return None
 
-
     # ---------------------------------------------------------
-    # Text Embeddings
+    # TEXT EMBEDDING
     # ---------------------------------------------------------
     @torch.no_grad()
     def text_embedding(self, text: str):
@@ -164,19 +156,15 @@ class AudioSearcher:
         proj = self.text_proj(emb)
         return F.normalize(proj, p=2, dim=-1).cpu()
 
-
     # ---------------------------------------------------------
-    # Embeddings builder
+    # BUILD AUDIO EMBEDDINGS
     # ---------------------------------------------------------
     def _build_embeddings_for_folder(self, folder: Path, out: Path):
         wavs = sorted(folder.glob("*.wav"))
         if not wavs:
-            print(f"⚠️ No WAV in {folder}")
             return None, None
 
         embs, files = [], []
-        print(f"🎧 Found {len(wavs)} files in {folder}")
-
         for w in tqdm(wavs, desc=f"Embedding {folder.name}"):
             e = self.audio_embedding(w)
             if e is not None:
@@ -188,73 +176,52 @@ class AudioSearcher:
 
         full = torch.cat(embs, dim=0)
         torch.save({"embeddings": full, "files": files}, out)
-
-        print(f"💾 Saved → {out}")
         return full, files
 
     def build_all_embeddings(self):
-        # MAIN embeddings
-        if not self.emb_main_path.exists():
-            self.emb_main, self.files_main = self._build_embeddings_for_folder(
-                self.audio_main, self.emb_main_path
-            )
-        else:
-            print("🔹 MAIN audio embeddings already exist — skipping.")
 
-        # OTHER embeddings
+        # Prioritize OTHER folder
         if not self.emb_other_path.exists():
             self.emb_other, self.files_other = self._build_embeddings_for_folder(
                 self.audio_other, self.emb_other_path
             )
         else:
-            print("🔹 OTHER audio embeddings already exist — skipping.")
-
-    def load_embeddings(self):
-        if self.emb_main_path.exists():
-            d = torch.load(self.emb_main_path)
-            self.emb_main = d["embeddings"]
-            self.files_main = d["files"]
-
-        if self.emb_other_path.exists():
             d = torch.load(self.emb_other_path)
-            self.emb_other = d["embeddings"]
+            self.emb_other = d["embeddings"];
             self.files_other = d["files"]
 
-        print("📥 Loaded embeddings:",
-              f"\n  MAIN:  {len(self.files_main) if self.files_main else 0}",
-              f"\n  OTHER: {len(self.files_other) if self.files_other else 0}")
+        # MAIN folder second
+        if not self.emb_main_path.exists():
+            self.emb_main, self.files_main = self._build_embeddings_for_folder(
+                self.audio_main, self.emb_main_path
+            )
+        else:
+            d = torch.load(self.emb_main_path)
+            self.emb_main = d["embeddings"];
+            self.files_main = d["files"]
 
+    def load_embeddings(self):
+        if self.emb_other_path.exists():
+            d = torch.load(self.emb_other_path)
+            self.emb_other = d["embeddings"];
+            self.files_other = d["files"]
+
+        if self.emb_main_path.exists():
+            d = torch.load(self.emb_main_path)
+            self.emb_main = d["embeddings"];
+            self.files_main = d["files"]
 
     # ---------------------------------------------------------
-    # Faster-Whisper transcription
+    # TRANSCRIBE
     # ---------------------------------------------------------
     @torch.no_grad()
     def transcribe_audio(self, path: Path):
-        segments, info = self.fw.transcribe(str(path), beam_size=1)
-        text = " ".join([seg.text for seg in segments])
-        return text.strip()
+        seg, info = self.fw.transcribe(str(path), beam_size=1)
+        return " ".join([s.text for s in seg]).strip()
 
-
-    # ---------------------------------------------------------
-    # Build transcripts
-    # ---------------------------------------------------------
     def build_all_transcripts(self):
-        # ---------- MAIN ----------
-        df_main = _safe_load_csv(self.transcripts_main_path)
-        if df_main is None:
-            rows = []
-            for w in tqdm(sorted(self.audio_main.glob("*.wav")), desc="Transcribing MAIN"):
-                rows.append({
-                    "filename": w.name,
-                    "folder": "main",
-                    "transcript": self.transcribe_audio(w)
-                })
-            df_main = pd.DataFrame(rows)
-            df_main.to_csv(self.transcripts_main_path, index=False, encoding="utf-8")
 
-        self.transcripts_main = df_main
-
-        # ---------- OTHER ----------
+        # OTHER FIRST (priority)
         df_other = _safe_load_csv(self.transcripts_other_path)
         if df_other is None:
             rows = []
@@ -265,40 +232,103 @@ class AudioSearcher:
                     "transcript": self.transcribe_audio(w)
                 })
             df_other = pd.DataFrame(rows)
-            df_other.to_csv(self.transcripts_other_path, index=False, encoding="utf-8")
+            df_other.to_csv(self.transcripts_other_path, index=False)
 
         self.transcripts_other = df_other
 
-        # MERGE
-        self.transcripts = pd.concat([df_main, df_other], ignore_index=True)
+        # MAIN SECOND
+        df_main = _safe_load_csv(self.transcripts_main_path)
+        if df_main is None:
+            rows = []
+            for w in tqdm(sorted(self.audio_main.glob("*.wav")), desc="Transcribing MAIN"):
+                rows.append({
+                    "filename": w.name,
+                    "folder": "main",
+                    "transcript": self.transcribe_audio(w)
+                })
+            df_main = pd.DataFrame(rows)
+            df_main.to_csv(self.transcripts_main_path, index=False)
+
+        self.transcripts_main = df_main
+
+        self.transcripts = pd.concat([df_other, df_main], ignore_index=True)
         return self.transcripts
 
     # ---------------------------------------------------------
-    # Vector search
+    # SEMANTIC + KEYWORD HYBRID SEARCH
     # ---------------------------------------------------------
-    def search_audio(self, text: str, top_k=10):
+    @torch.no_grad()
+    def search_hybrid(self, query: str, top_k=10):
+        """
+        Hybrid search:
+        - semantic embedding similarity
+        - keyword transcript match
+        - PRIORITY: audio_other → audio_main
+        - RETURNS full_path for guaranteed loading
+        """
+
+        # Ensure embeddings + transcripts are loaded
         if self.emb_main is None or self.emb_other is None:
             self.load_embeddings()
-
-        all_emb = torch.cat([self.emb_main, self.emb_other], dim=0)
-        all_files = self.files_main + self.files_other
-
-        q = self.text_embedding(text)
-        sims = F.cosine_similarity(q, all_emb).numpy()
-
-        idxs = sims.argsort()[::-1][:top_k]
-        return [(all_files[i], float(sims[i])) for i in idxs]
-
-
-    # ---------------------------------------------------------
-    # Transcript search
-    # ---------------------------------------------------------
-    def search_transcripts(self, query: str, top_k=10):
         if self.transcripts is None:
             self.build_all_transcripts()
 
-        df = self.transcripts.copy()
-        df["score"] = df["transcript"].str.lower().apply(lambda t: t.count(query.lower()))
-        df = df[df["score"] > 0].sort_values("score", ascending=False)
+        # Query embedding
+        q_emb = self.text_embedding(query)
+        if q_emb is None:
+            return []
 
-        return df.head(top_k)[["filename", "transcript", "score"]].to_dict("records")
+        # ----------------------------------------------------
+        # 1️⃣ PRIORITY ORDER: OTHER FIRST → MAIN SECOND
+        # ----------------------------------------------------
+        all_emb = torch.cat([self.emb_other, self.emb_main], dim=0)
+        all_files = self.files_other + self.files_main
+
+        sims = F.cosine_similarity(q_emb, all_emb).cpu().numpy()
+
+        # ----------------------------------------------------
+        # 2️⃣ KEYWORD BOOST FROM TRANSCRIPTS
+        # ----------------------------------------------------
+        df = self.transcripts.copy()
+
+        def kw_score(t):
+            return 1.0 if query.lower() in t.lower() else 0.0
+
+        df["keyword"] = df["transcript"].apply(kw_score)
+
+        # ----------------------------------------------------
+        # 3️⃣ BUILD FINAL RESULT OBJECTS
+        # ----------------------------------------------------
+        results = []
+        for idx, fname in enumerate(all_files):
+            # Transcript match
+            row = df[df["filename"] == fname]
+            k = float(row["keyword"].values[0]) if len(row) else 0.0
+
+            # Folder
+            folder = "other" if fname in self.files_other else "main"
+
+            # 🔥 Full path
+            full_path = (
+                self.audio_other / fname
+                if folder == "other"
+                else self.audio_main / fname
+            )
+
+            semantic = float(sims[idx])
+            hybrid = 0.7 * semantic + 0.3 * k
+
+            results.append({
+                "filename": fname,
+                "folder": folder,
+                "full_path": str(full_path),
+                "semantic": semantic,
+                "keyword": k,
+                "score": hybrid
+            })
+
+        # Sort by score
+        results = sorted(results, key=lambda x: x["score"], reverse=True)
+
+        return results[:top_k]
+
