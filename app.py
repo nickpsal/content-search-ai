@@ -18,48 +18,24 @@ st.set_page_config(
 # ======================================================
 st.markdown("""
 <style>
-.result-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
-    margin-top: 25px;
+
+[data-testid="stExpander"] {
+    background-color: #141414;
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid #2a2a2a;
+    margin-bottom: 5px !important;
+    box-shadow: 0 0 25px rgba(0,0,0,0.5), inset 0 0 12px rgba(255,255,255,0.03);
 }
-.result-card {
-    position: relative;
-    background-color: #1e1e1e;
-    border-radius: 14px;
-    overflow: hidden;
-    transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+
+[data-testid="stExpander"] > details {
+    border-radius: 16px !important;
 }
-.result-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 20px rgba(255,255,255,0.2);
+
+[data-testid="stExpanderDetails"] {
+    padding: 20px;
 }
-.result-card img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 14px;
-}
-.overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%);
-    color: white;
-    padding: 10px;
-    text-align: center;
-}
-.score-label {
-    color: #ff6b6b;
-    font-weight: 700;
-    font-size: 0.9rem;
-}
-.source-label {
-    color: #bbb;
-    font-size: 0.8rem;
-}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,111 +146,117 @@ with tabs[1]:
     with st.expander("🔧 Display Settings", expanded=False):
         top_k = st.slider("Select number of results per search", 3, 30, 5)
 
+    st.markdown('</div>', unsafe_allow_html=True)
 # ======================================================
 # ℹ️ APP INFO TAB
+# ======================================================
+# ======================================================
+# ℹ️ APPLICATION INFORMATION TAB
 # ======================================================
 with tabs[0]:
     st.subheader("ℹ️ Application Information")
 
-    # ===========================
-    # ABOUT THE PROJECT
-    # ===========================
-    with st.expander("🧠 About This Project", expanded=True):
-        st.markdown("""
-            This system is a **unified multimodal retrieval platform** capable of searching across  
-            **images, text, PDFs, and audio**, using a shared semantic embedding space.
+    # ======================================================
+    # 🧠 ABOUT THIS PROJECT — CARD
+    # ======================================================
+    with st.container():
+        with st.expander("🧠 About This Project", expanded=True):
+            st.markdown("""
+                This system is a **unified multimodal retrieval platform** capable of searching across  
+                **images, text, PDFs, and audio**, using a shared semantic embedding space.
 
-            It demonstrates practical and research-level techniques in:
-            - **Image Search** (text → image, image → image)  
-            - **PDF Document Search** (text → PDF, PDF → PDF)  
-            - **Audio Semantic Search** (text → audio using Whisper + projection)  
+                It demonstrates practical and research-level techniques in:
+                - **Image Search** (text → image, image → image)  
+                - **PDF Document Search** (text → PDF, PDF → PDF)  
+                - **Audio Semantic Search** (text → audio using Whisper + projection)
 
-            A major new milestone is the completion of the **Audio-Align v2 Emotion Model (v5)**,  
-            which aligns Whisper audio embeddings with the M-CLIP text/image embedding space  
-            for **high-precision audio semantic retrieval and also emotion search**.
+                A major new milestone is the completion of the **Audio-Align v2 Emotion Model (v5)**,  
+                which aligns Whisper audio embeddings with the M-CLIP text/image embedding space  
+                enabling **high-precision audio semantic retrieval** and **emotion-based audio search**.
 
-            ---
-            ### 🧩 Technologies Used
-            - **Python 3.11**
-            - **Streamlit** — interactive UI  
-            - **PyTorch** — deep learning backend  
-            - **Sentence-Transformers** — Multilingual CLIP  
-            - **OpenAI Whisper** (fine-tuned + projection)  
-            - **PyMuPDF** — PDF parsing  
-            - **FFmpeg, TQDM, PIL, NumPy** — preprocessing utilities  
+                ---
+                ### 🧩 Technologies Used
+                - **Python 3.11**
+                - **Streamlit**
+                - **PyTorch**
+                - **Sentence-Transformers**  
+                - **OpenAI Whisper**  
+                - **PyMuPDF**, **FFmpeg**, **TQDM**, **PIL**, **NumPy**
 
-            ---
-            ### ⚙️ Model Architecture Summary
-            - **M-CLIP (ViT-B/32)** — multilingual text & image embeddings  
-            - **Whisper-small encoder** — audio feature extraction  
-            - **Audio Projection Layer (512-D)** — trained to align audio with CLIP space  
-            - **Emotion Classification Head (6 classes)** — trained on RAVDESS/CREMA-D  
-            - **PDF encoder** — semantic page-level representations  
+                ---
+                ### ⚙️ Model Architecture Summary
+                - **M-CLIP (ViT-B/32)**  
+                - **Whisper-small encoder**  
+                - **Audio Projection Layer (512-D)**  
+                - **Emotion Classifier (6 classes)**  
+                - **PDF Encoder**
 
-            The combination of these models enables **cross-modal semantic retrieval**  
-            across previously unrelated media types.
+                Combined, these models enable **cross-modal semantic retrieval**  
+                across previously unrelated media types.
+            """)
 
-            ---
-            ### 👨‍💻 Developer
-            **Nikolaos Psaltakis**  
-            University of West Attica  
-            Department of Informatics & Computer Engineering  
-            Bachelor Thesis Project – © 2025
-        """)
+    # ======================================================
+    # 📘 VERSION HISTORY — CARD
+    # ======================================================
+    st.markdown('<div class="stCard">', unsafe_allow_html=True)
+    with st.container():
+        with st.expander("📘 Version History", expanded=False):
+            st.markdown("""
+                ## 🟢 **v1.6 — Audio Search Integration (November 2025)**  
+                - Integrated **Audio Semantic Search**  
+                - Added dual audio folders  
+                - Whisper transcription engine  
+                - Hybrid search  
+                - Cached audio embeddings  
+                - Preprocessing pipeline  
 
-    # ===========================
-    # VERSION HISTORY
-    # ===========================
-    with st.expander("📘 Version History", expanded=False):
-        st.markdown("""
-            ## 🟢 **v1.6 – Audio Search Integration (November 2025)**  
-            - Added **Audio Semantic Search module** using Whisper + Projection  
-            - Implemented **AudioSearcher class** (embeddings, transcripts, hybrid search)  
-            - Added **dual-folder audio support** (AudioWAV + other_audio)  
-            - Added **Whisper transcription engine** for audio-to-text retrieval  
-            - Introduced **Hybrid Search** combining audio embeddings + transcripts  
-            - Enabled **fast cached embeddings** for immediate reloading  
-            - Streamlined dataset preprocessing and environment cleanup  
-            - Prepared for full multimodal demonstration in Streamlit UI  
+                ---
+                ## 🟢 **v1.5 — Stable Release (October 2025)**
+                - Full **PDF-to-PDF** and **Text-to-PDF** retrieval  
+                - Added Application Info tab  
+                - Improved UI design  
+                - Refined thresholds
 
-            ---
-            ### 🟢 **v1.5 – Stable Release (October 2025)**
-            - Added **PDF-to-PDF** & **Text-to-PDF** semantic search  
-            - Introduced **App Info tab** with detailed metadata  
-            - Improved Streamlit UI, multilingual support & documentation  
-            - Cleaned hybrid CLIP + M-CLIP pipeline  
-            - Refined similarity thresholds and result ranking  
+                ---
+                ## 🟠 **v1.4 — Core Integration (September 2025)**
+                - Modular UI tabs  
+                - Global caching system  
 
-            ### 🟠 **v1.4 – Core Functionality Integration (September 2025)**
-            - Modular UI with Streamlit tabs  
-            - Stable caching of all embeddings  
-            - Added embedded settings & controls  
+                ---
+                ## 🟡 **v1.3 — M-CLIP Integration (August 2025)**
+                - Multilingual CLIP  
+                - Cross-modal semantic search  
 
-            ### 🟡 **v1.3 – Multilingual CLIP Integration (August 2025)**
-            - M-CLIP integration with Greek + English support  
-            - Added cross-modal retrieval foundation  
-            - Initial PDF search engine implementation  
+                ---
+                ## 🔵 **v1.2 — Visual Search Prototype (June 2025)**
+                - Text → Image  
+                - Image → Image  
+                - COCO experiments  
 
-            ### 🔵 **v1.2 – Visual Search Prototype (June 2025)**
-            - Text-to-image & image-to-image CLIP search  
-            - COCO dataset evaluation  
-            - Initial embedding store format  
+                ---
+                ## ⚪ **v1.1 — Research Setup (May 2025)**
+                - Dataset initialization  
 
-            ### ⚪ **v1.1 – Research Setup (May 2025)**
-            - Environment setup, dataset initialization  
-            - First preprocessing & validation tools  
+                ---
+                ## ⚫ **v1.0 — Project Start (April 2025)**
+                - Research planning
+            """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-            ### ⚫ **v1.0 – Project Initialization (April 2025)**
-            - Thesis planning & architecture specification  
-        """)
-
-    with st.expander("🧾 Next Planned Updates", expanded=False):
-        st.markdown("""
-            - 🎥 Integrate **video search** using frame-level M-CLIP embeddings  
-            - 🎚️ Add **hybrid audio-video retrieval**  
-            - 🗂️ Introduce metadata-based ranking (speaker, emotion, duration)  
-            - 📊 Analytics panel for embedding similarity visualization  
-        """)
+    # ======================================================
+    # 🧾 NEXT PLANNED UPDATES — CARD
+    # ======================================================
+    st.markdown('<div class="stCard">', unsafe_allow_html=True)
+    with st.container():
+        with st.expander("🧾 Next Planned Updates", expanded=False):
+            st.markdown("""
+                - 🎥 Video search (frame-level embeddings)  
+                - 🎚️ Hybrid audio-video retrieval  
+                - 🗂️ Metadata-based ranking  
+                - 📊 Heatmap visualization  
+                - ⚡ Faster keyword segmentation  
+            """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
