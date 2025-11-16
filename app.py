@@ -119,49 +119,50 @@ tabs = st.tabs([
 # ======================================================
 with tabs[1]:
     st.subheader("⚙️ Application Settings")
+
     # ------------------------------------------------------
     # DATASET & EMBEDDINGS CONFIG
     # ------------------------------------------------------
-    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=False):
-        st.markdown("### 🎧 Image Processing")
+    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=True):
+
+        st.markdown("### 🖼️ Image Processing")
         col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
         with col1:
             if st.button("📦 Download COCO Dataset", use_container_width=True):
-                with st.spinner("Downloading COCO Dataset"):
+                with st.spinner("Downloading COCO Dataset..."):
                     searcher.download_coco_data()
                 st.success("✅ COCO dataset downloaded successfully!")
 
         with col2:
             if st.button("🧠 Extract Image Embeddings", use_container_width=True):
-                with st.spinner("Extracting Image Embeddings"):
+                with st.spinner("Extracting Image Embeddings..."):
                     searcher.extract_image_embeddings()
                 st.success("✅ Image embeddings created successfully!")
 
         with col3:
             if st.button("💬 Extract Caption Embeddings", use_container_width=True):
-                with st.spinner("Extracting Caption Embeddings"):
+                with st.spinner("Extracting Caption Embeddings..."):
                     searcher.extract_text_embeddings()
                 st.success("✅ Caption embeddings created successfully!")
 
-        # ---------------------------------------------
-        # NEW ROW — AUDIO
-        # ---------------------------------------------
+        # --------------------------------------------------
+        # AUDIO
+        # --------------------------------------------------
         st.markdown("### 🎧 Audio Processing")
-
         col4, col5, col6 = st.columns([1, 1, 1], gap="medium")
 
         with col4:
-            if st.button("📝 Build Audio Embeddings and Transcripts", use_container_width=True):
-                with st.spinner("Transcribing audio…"):
+            if st.button("🎙️ Build Audio Embeddings + Transcripts", use_container_width=True):
+                with st.spinner("Transcribing audio and building embeddings..."):
                     audio.build_all_transcripts()
-                st.success("✅ Audio Embeddings and Transcripts created! succesfully")
+                st.success("✅ Audio transcripts and embeddings created successfully!")
 
         with col5:
-            if st.button("📝 Build Emotion Cache file", use_container_width=True):
-                with st.spinner("Creating Cache File…"):
+            if st.button("🎭 Build Emotion Cache File", use_container_width=True):
+                with st.spinner("Creating emotion cache file..."):
                     audio.save_emotion_cache()
-                st.success("✅ Emotion Cached File Created succesfully")
+                st.success("✅ Emotion cache file created successfully!")
 
     # ------------------------------------------------------
     # DISPLAY SETTINGS
