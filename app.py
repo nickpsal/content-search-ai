@@ -3,7 +3,7 @@ import time
 import streamlit as st
 import base64
 from pathlib import Path
-from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
+from core import ImageSearcher, PDFSearcher, Model, AudioSearcher, CoreTools
 
 # ======================================================
 # 🧠 STREAMLIT CONFIGURATION
@@ -454,6 +454,8 @@ with tabs[6]:
                     # Convert Windows path → POSIX
                     full_path = Path(r["full_path"]).as_posix()
 
+                    tools = CoreTools(full_path)
+
                     st.markdown(f"""
                     ### 🎵 {fname}
                     **Folder:** `{folder}`  
@@ -461,6 +463,7 @@ with tabs[6]:
                     🔊 **Semantic Similarity:** `{semantic:.3f}`  
                     🎭 **Emotion:** `{emotion}`
                     """)
+                    tools.plot_waveform_and_spectrogram()
 
                     with st.expander("📄 Transcript"):
                         st.write(transcript)
