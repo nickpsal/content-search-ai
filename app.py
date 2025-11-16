@@ -188,9 +188,9 @@ with tabs[0]:
             - **PDF Document Search** (text → PDF, PDF → PDF)  
             - **Audio Semantic Search** (text → audio using Whisper + projection)  
 
-            A major new milestone is the completion of the **Audio-Align v2 Emotion Model (v4)**,  
+            A major new milestone is the completion of the **Audio-Align v2 Emotion Model (v5)**,  
             which aligns Whisper audio embeddings with the M-CLIP text/image embedding space  
-            for **high-precision audio semantic retrieval**.
+            for **high-precision audio semantic retrieval and also emotion search**.
 
             ---
             ### 🧩 Technologies Used
