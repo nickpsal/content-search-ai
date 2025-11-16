@@ -128,17 +128,20 @@ with tabs[1]:
 
         with col1:
             if st.button("📦 Download COCO Dataset", use_container_width=True):
-                searcher.download_coco_data()
+                with st.spinner("Downloading COCO Dataset"):
+                    searcher.download_coco_data()
                 st.success("✅ COCO dataset downloaded successfully!")
 
         with col2:
             if st.button("🧠 Extract Image Embeddings", use_container_width=True):
-                searcher.extract_image_embeddings()
+                with st.spinner("Extracting Image Embeddings"):
+                    searcher.extract_image_embeddings()
                 st.success("✅ Image embeddings created successfully!")
 
         with col3:
             if st.button("💬 Extract Caption Embeddings", use_container_width=True):
-                searcher.extract_text_embeddings()
+                with st.spinner("Extracting Caption Embeddings"):
+                    searcher.extract_text_embeddings()
                 st.success("✅ Caption embeddings created successfully!")
 
         # ---------------------------------------------
@@ -146,19 +149,19 @@ with tabs[1]:
         # ---------------------------------------------
         st.markdown("### 🎧 Audio Processing")
 
-        a1, a2, _ = st.columns([1, 1, 1], gap="medium")
+        col4, col5, col6 = st.columns([1, 1, 1], gap="medium")
 
-        with a1:
-            if st.button("🎵 Build Audio Embeddings", use_container_width=True):
-                with st.spinner("Building audio embeddings…"):
-                    audio.build_all_embeddings()
-                st.success("✅ Audio embeddings built!")
-
-        with a2:
-            if st.button("📝 Build Audio Transcripts", use_container_width=True):
+        with col4:
+            if st.button("📝 Build Audio Embeddings and Transcripts", use_container_width=True):
                 with st.spinner("Transcribing audio…"):
                     audio.build_all_transcripts()
-                st.success("✅ Audio transcripts created!")
+                st.success("✅ Audio Embeddings and Transcripts created! succesfully")
+
+        with col5:
+            if st.button("📝 Build Emotion Cache file", use_container_width=True):
+                with st.spinner("Creating Cache File…"):
+                    audio.save_emotion_cache()
+                st.success("✅ Emotion Cached File Created succesfully")
 
     # ------------------------------------------------------
     # DISPLAY SETTINGS
@@ -428,6 +431,19 @@ with tabs[5]:
 with tabs[6]:
     st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion + Language Filter)")
 
+    with st.container():
+        st.markdown("""
+        #### 🎨 Color Guide
+        - 🟧 **Orange:** Exact location where your query was detected in the audio  
+        - 🎭 **Emotion background (soft color):** Detected overall emotion of the audio  
+            - 😡 **Red** → Angry  
+            - 🤢 **Purple (Dark)** → Disgust  
+            - 😱 **Purple (Light)** → Fearful  
+            - 😊 **Green** → Happy  
+            - 😐 **Gray** → Neutral  
+            - 😢 **Blue** → Sad  
+        """)
+
     query = st.text_input("🔎 Enter your audio search phrase")
 
     if st.button("Run Audio Search", use_container_width=True):
@@ -435,7 +451,12 @@ with tabs[6]:
             st.warning("⚠️ Please enter a phrase.")
         else:
             with st.spinner("Searching audio…"):
-                results = audio.search_semantic_emotion(query, top_k=top_k)
+                query_type =audio.classify_query_type(query)
+
+                if query_type == "emotion":
+                    results = audio.search_by_emotion(query, top_k=top_k)
+                else:
+                    results = audio.search_semantic_emotion(query, top_k=top_k)
 
             if not results:
                 st.error("❌ No matching audio found.")
@@ -463,7 +484,19 @@ with tabs[6]:
                     🔊 **Semantic Similarity:** `{semantic:.3f}`  
                     🎭 **Emotion:** `{emotion}`
                     """)
-                    tools.plot_waveform_and_spectrogram()
+
+                    # 🔥 DETECTED WORD HIGHLIGHTING
+                    try:
+                        segments = audio.get_query_segments(Path(full_path), query)
+                    except Exception as e:
+                        segments = []
+                        st.warning(f"Could not compute query segments: {e}")
+
+                    st.write("### 📊 Audio Visualization")
+
+                    tools.plot_waveform_and_spectrogram_with_highlights(
+                        query_segments=segments,  emotion_label=r["emotion"]
+                    )
 
                     with st.expander("📄 Transcript"):
                         st.write(transcript)
