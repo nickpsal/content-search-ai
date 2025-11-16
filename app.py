@@ -2,6 +2,7 @@ import os
 import time
 import streamlit as st
 import base64
+from pathlib import Path
 from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
 
 # ======================================================
@@ -425,7 +426,7 @@ with tabs[5]:
 # 🎧 AUDIO SEARCH (PLACEHOLDER)
 # ======================================================
 with tabs[6]:
-    st.subheader("🎧 Text-to-Audio Search (Semantic + Keyword Hybrid)")
+    st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion + Language Filter)")
 
     query = st.text_input("🔎 Enter your audio search phrase")
 
@@ -434,7 +435,7 @@ with tabs[6]:
             st.warning("⚠️ Please enter a phrase.")
         else:
             with st.spinner("Searching audio…"):
-                results = audio.search_hybrid(query, top_k=top_k)
+                results = audio.search_semantic_emotion(query, top_k=top_k)
 
             if not results:
                 st.error("❌ No matching audio found.")
@@ -444,29 +445,35 @@ with tabs[6]:
                 for r in results:
                     fname = r["filename"]
                     folder = r["folder"]
-                    semantic = r["semantic"]
-                    kw = r["keyword"]
-                    score = r["score"]
-                    full_path = r["full_path"]   # <-- 🔥 ΧΡΗΣΙΜΟΠΟΙΟΥΜΕ ΤΟ ΕΤΟΙΜΟ PATH
+                    semantic = r["similarity"]
+                    emotion = r.get("emotion", None)
+                    transcript = r.get("transcript", "")
+                    lang = r.get("text_language", "unknown")
+
+                    #f"[{i}] {r['filename']}  ({r['folder']})"
+                    # Convert Windows path → POSIX
+                    full_path = Path(r["full_path"]).as_posix()
 
                     st.markdown(f"""
                     ### 🎵 {fname}
                     **Folder:** `{folder}`  
+                    🌐 **Language:** `{lang}`  
                     🔊 **Semantic Similarity:** `{semantic:.3f}`  
-                    🔍 **Keyword Match:** `{kw}`  
-                    ⭐ **Hybrid Score:** `{score:.3f}`
+                    🎭 **Emotion:** `{emotion}`
                     """)
+
+                    with st.expander("📄 Transcript"):
+                        st.write(transcript)
 
                     # === AUDIO PLAYER ===
                     try:
                         with open(full_path, "rb") as f:
                             st.audio(f.read(), format="audio/wav")
+                        st.caption(full_path)
                     except Exception as e:
                         st.error(f"Could not load audio file `{full_path}`: {e}")
 
                     st.markdown("---")
-
-
 
 # ======================================================
 # 🎥 VIDEO SEARCH (PLACEHOLDER)
