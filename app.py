@@ -371,9 +371,27 @@ with tabs[0]:
 # ======================================================
 with tabs[2]:
     st.subheader("💬 Text-to-Image Search")
-    query = st.text_input("✍️ Enter your search query")
 
-    if st.button("🔎 Run Text Search"):
+    # state για να κάνουμε trigger το search
+    if "run_text_search" not in st.session_state:
+        st.session_state.run_text_search = False
+
+    def trigger_text_search():
+        st.session_state.run_text_search = True
+
+    query = st.text_input(
+        "✍️ Enter your search query",
+        value="",
+        on_change=trigger_text_search  # <-- ENTER triggers search
+    )
+
+    run_btn = st.button("🔎 Run Text Search")
+
+    # Run search if: Enter pressed OR button clicked
+    if run_btn:
+        st.session_state.run_text_search = True
+
+    if st.session_state.run_text_search:
         if not query.strip():
             st.warning("⚠️ Please enter a search phrase.")
         else:
@@ -394,6 +412,9 @@ with tabs[2]:
                         caption=f"Similarity: {score * 100:.2f}% | Dataset: {source}",
                         use_container_width=True
                     )
+
+    # reset state after rendering
+    st.session_state.run_text_search = False
 
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
@@ -535,72 +556,98 @@ with tabs[6]:
             - 😢 **Blue** → Sad  
         """)
 
-    query = st.text_input("🔎 Enter your audio search phrase")
+    # -------------------------------
+    # STATE για trigger από Enter
+    # -------------------------------
+    if "run_audio_search" not in st.session_state:
+        st.session_state.run_audio_search = False
 
-    if st.button("Run Audio Search", use_container_width=True):
+    def trigger_audio_search():
+        st.session_state.run_audio_search = True
+
+    # -------------------------------
+    # TEXT INPUT (ENTER triggers search)
+    # -------------------------------
+    query = st.text_input(
+        "🔎 Enter your audio search phrase",
+        value="",
+        on_change=trigger_audio_search
+    )
+
+    # -------------------------------
+    # BUTTON (also triggers search)
+    # -------------------------------
+    run_btn = st.button("Run Audio Search", use_container_width=True)
+    if run_btn:
+        st.session_state.run_audio_search = True
+
+    # -------------------------------
+    # RUN SEARCH (button or Enter)
+    # -------------------------------
+    if st.session_state.run_audio_search:
+
         if not query.strip():
             st.warning("⚠️ Please enter a phrase.")
         else:
             with st.spinner("Searching audio…"):
-                query_type =audio.classify_query_type(query)
+                query_type = audio.classify_query_type(query)
 
                 if query_type == "emotion":
                     results = audio.search_by_emotion(query, top_k=top_k)
                 else:
                     results = audio.search_semantic_emotion(query, top_k=top_k)
 
-            if not results:
-                st.error("❌ No matching audio found.")
-            else:
-                st.success(f"✅ Found {len(results)} audio matches!")
+        if not results:
+            st.error("❌ No matching audio found.")
+        else:
+            st.success(f"✅ Found {len(results)} audio matches!")
 
-                for r in results:
-                    fname = r["filename"]
-                    folder = r["folder"]
-                    semantic = r["similarity"]
-                    emotion = r.get("emotion", None)
-                    transcript = r.get("transcript", "")
-                    lang = r.get("text_language", "unknown")
+            for r in results:
+                fname = r["filename"]
+                folder = r["folder"]
+                semantic = r["similarity"]
+                emotion = r.get("emotion", None)
+                transcript = r.get("transcript", "")
+                lang = r.get("text_language", "unknown")
 
-                    #f"[{i}] {r['filename']}  ({r['folder']})"
-                    # Convert Windows path → POSIX
-                    full_path = Path(r["full_path"]).as_posix()
+                full_path = Path(r["full_path"]).as_posix()
+                tools = CoreTools(full_path)
 
-                    tools = CoreTools(full_path)
+                st.markdown(f"""
+                ### 🎵 {fname}
+                **Folder:** `{folder}`  
+                🌐 **Language:** `{lang}`  
+                🔊 **Semantic Similarity:** `{semantic:.3f}`  
+                🎭 **Emotion:** `{emotion}`
+                """)
 
-                    st.markdown(f"""
-                    ### 🎵 {fname}
-                    **Folder:** `{folder}`  
-                    🌐 **Language:** `{lang}`  
-                    🔊 **Semantic Similarity:** `{semantic:.3f}`  
-                    🎭 **Emotion:** `{emotion}`
-                    """)
+                # --- QUERY SEGMENTS HIGHLIGHT ---
+                try:
+                    segments = audio.get_query_segments(Path(full_path), query)
+                except Exception as e:
+                    segments = []
+                    st.warning(f"Could not compute query segments: {e}")
 
-                    # 🔥 DETECTED WORD HIGHLIGHTING
-                    try:
-                        segments = audio.get_query_segments(Path(full_path), query)
-                    except Exception as e:
-                        segments = []
-                        st.warning(f"Could not compute query segments: {e}")
+                st.write("### 📊 Audio Visualization")
 
-                    st.write("### 📊 Audio Visualization")
+                tools.plot_waveform_and_spectrogram_with_highlights(
+                    query_segments=segments, emotion_label=r["emotion"]
+                )
 
-                    tools.plot_waveform_and_spectrogram_with_highlights(
-                        query_segments=segments,  emotion_label=r["emotion"]
-                    )
+                with st.expander("📄 Transcript"):
+                    st.write(transcript)
 
-                    with st.expander("📄 Transcript"):
-                        st.write(transcript)
+                try:
+                    with open(full_path, "rb") as f:
+                        st.audio(f.read(), format="audio/wav")
+                    st.caption(full_path)
+                except Exception as e:
+                    st.error(f"Could not load audio file `{full_path}`: {e}")
 
-                    # === AUDIO PLAYER ===
-                    try:
-                        with open(full_path, "rb") as f:
-                            st.audio(f.read(), format="audio/wav")
-                        st.caption(full_path)
-                    except Exception as e:
-                        st.error(f"Could not load audio file `{full_path}`: {e}")
+                st.markdown("---")
 
-                    st.markdown("---")
+    # reset για να μην ξανατρέχει σε κάθε refresh
+    st.session_state.run_audio_search = False
 
 # ======================================================
 # 🎥 VIDEO SEARCH (PLACEHOLDER)
