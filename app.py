@@ -178,7 +178,7 @@ st.markdown(f"""
 DATA_DIR = "./data"
 model = Model()
 model.download_model()
-searcher = ImageSearcher(data_dir=DATA_DIR)
+searcher = ImageSearcher()
 audio = AudioSearcher()
 
 pdf = PDFSearcher()
@@ -256,9 +256,7 @@ with tabs[1]:
         top_k = st.slider("Select number of results per search", 3, 30, 5)
 
     st.markdown('</div>', unsafe_allow_html=True)
-# ======================================================
-# ℹ️ APP INFO TAB
-# ======================================================
+
 # ======================================================
 # ℹ️ APPLICATION INFORMATION TAB
 # ======================================================
@@ -398,7 +396,7 @@ with tabs[2]:
         else:
             st.info(f"Searching for: '{query}' ...")
             start = time.time()
-            results = searcher.search(query, top_k=top_k, verbose=False)
+            results = searcher.search(query, top_k=top_k)
             elapsed = time.time() - start
 
             if results:
