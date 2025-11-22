@@ -222,6 +222,7 @@ with tabs[1]:
             if st.button("🧠 Extract Image Embeddings", use_container_width=True):
                 with st.spinner("Extracting Image Embeddings..."):
                     searcher.extract_image_embeddings()
+                    searcher.extract_image_embeddings('other')
                 st.success("✅ Image embeddings created successfully!")
 
         with col3:
