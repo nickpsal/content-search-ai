@@ -209,7 +209,7 @@ with tabs[1]:
     # ------------------------------------------------------
     with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=True):
 
-        st.markdown("### 🖼️ Image Processing")
+        st.markdown("### 🖼️ Data Processing")
         col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
         with col1:
@@ -217,19 +217,6 @@ with tabs[1]:
                 with st.spinner("Downloading COCO Dataset..."):
                     searcher.download_coco_data()
                 st.success("✅ COCO dataset downloaded successfully!")
-
-        with col2:
-            if st.button("🧠 Extract Image Embeddings", use_container_width=True):
-                with st.spinner("Extracting Image Embeddings..."):
-                    searcher.extract_image_embeddings()
-                    searcher.extract_image_embeddings('other')
-                st.success("✅ Image embeddings created successfully!")
-
-        with col3:
-            if st.button("💬 Extract Caption Embeddings", use_container_width=True):
-                with st.spinner("Extracting Caption Embeddings..."):
-                    searcher.extract_text_embeddings()
-                st.success("✅ Caption embeddings created successfully!")
 
         # --------------------------------------------------
         # AUDIO
