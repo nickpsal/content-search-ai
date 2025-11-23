@@ -216,24 +216,6 @@ with tabs[1]:
                     searcher.download_coco_data()
                 st.success("✅ COCO dataset downloaded successfully!")
 
-        # --------------------------------------------------
-        # AUDIO
-        # --------------------------------------------------
-        st.markdown("### 🎧 Audio Processing")
-        col4, col5, col6 = st.columns([1, 1, 1], gap="medium")
-
-        with col4:
-            if st.button("🎙️ Build Audio Embeddings + Transcripts", use_container_width=True):
-                with st.spinner("Transcribing audio and building embeddings..."):
-                    audio.build_all_transcripts()
-                st.success("✅ Audio transcripts and embeddings created successfully!")
-
-        with col5:
-            if st.button("🎭 Build Emotion Cache File", use_container_width=True):
-                with st.spinner("Creating emotion cache file..."):
-                    audio.save_emotion_cache()
-                st.success("✅ Emotion cache file created successfully!")
-
     # ------------------------------------------------------
     # DISPLAY SETTINGS
     # ------------------------------------------------------
@@ -255,36 +237,41 @@ with tabs[0]:
         with st.expander("🧠 About This Project", expanded=True):
             st.markdown("""
                 This system is a **unified multimodal retrieval platform** capable of searching across  
-                **images, text, PDFs, and audio**, using a shared semantic embedding space.
+                **Images, PDFs, Audio**, and **Text**, all inside a single shared semantic embedding space.
 
                 It demonstrates practical and research-level techniques in:
                 - **Image Search** (text → image, image → image)  
                 - **PDF Document Search** (text → PDF, PDF → PDF)  
-                - **Audio Semantic Search** (text → audio using Whisper + projection)
+                - **Audio Semantic Search** (Whisper transcription + M-CLIP embeddings)  
+                - **Emotion Detection** (Emotion Model V5)  
+                - **Real-time indexing using Watchdogs**  
 
-                A major new milestone is the completion of the **Audio-Align v2 Emotion Model (v5)**,  
-                which aligns Whisper audio embeddings with the M-CLIP text/image embedding space  
-                enabling **high-precision audio semantic retrieval** and **emotion-based audio search**.
+                A major milestone is the completion of **v1.7**, which replaces  
+                all local embedding files with a **unified SQLite multimodal database**  
+                and introduces **automatic real-time filesystem indexing**.
 
                 ---
                 ### 🧩 Technologies Used
                 - **Python 3.11**
                 - **Streamlit**
-                - **PyTorch**
-                - **Sentence-Transformers**  
-                - **OpenAI Whisper**  
-                - **PyMuPDF**, **FFmpeg**, **TQDM**, **PIL**, **NumPy**
+                - **PyTorch / Sentence-Transformers**
+                - **OpenAI Whisper & Faster-Whisper**
+                - **M-CLIP multilingual model**
+                - **Emotion Model V5**
+                - **PyMuPDF**
+                - **FAISS**
+                - **SQLite3**
 
                 ---
-                ### ⚙️ Model Architecture Summary
-                - **M-CLIP (ViT-B/32)**  
-                - **Whisper-small encoder**  
-                - **Audio Projection Layer (512-D)**  
-                - **Emotion Classifier (6 classes)**  
-                - **PDF Encoder**
+                ### ⚙️ Model Architecture Overview
+                - **M-CLIP (ViT-B/32)** → unified text/image/PDF/audio embeddings  
+                - **Whisper-small** → speech-to-text transcription  
+                - **Audio semantic encoder** → transcript embeddings with M-CLIP  
+                - **Emotion Model V5** → 6-class emotional classification  
+                - **Per-page PDF encoder** → M-CLIP page embeddings  
 
-                Combined, these models enable **cross-modal semantic retrieval**  
-                across previously unrelated media types.
+                Together, these components form a **cross-modal AI retrieval engine**  
+                supporting fully multilingual queries.
             """)
 
     # ======================================================
@@ -294,71 +281,70 @@ with tabs[0]:
     with st.container():
         with st.expander("📘 Version History", expanded=False):
             st.markdown("""
-                ## 🟢 **v1.7 — SQLite Database Integration (November 2025)**  
-                - Added **unified SQLite database** for all modalities  
-                - Removed all old local files: image embeddings, audio embeddings, PDF embeddings, transcripts, captions  
-                - Merged text/image/PDF/audio data into single DB  
-                - Added **relative filesystem paths** (cross-platform support)  
-                - Cleaned + rebuilt transcripts table  
-                - Cleaned + rebuilt emotion predictions table  
-                - Fixed duplicate absolute paths (D:/, C:/, etc.)  
-                - Full production cleanup of file structure  
-                - Simplified Streamlit code — no need for rebuild buttons  
+                ## 🟢 **v1.7 — Full Multimodal SQLite Integration & Real-Time Indexing (November 2025)**  
+                This is the largest structural update so far.  
+
+                ### 🔥 Highlights
+                - Introduced a **single unified SQLite database** for all modalities:
+                    - `images`
+                    - `pdf_pages`
+                    - `audio_embeddings`
+                    - `audio_emotions`
+                - Removed **all old embedding/transcript folders**:
+                    - `data/transcripts/`
+                    - `data/embeddings/`
+                    - `data/transcripts/embeds/`
+                    - all `.npy` and `.txt` cache files  
+                - Full **relative path normalization** for cross-platform compatibility  
+                - Rebuilt **all transcripts** with Whisper  
+                - Rebuilt **all emotion predictions** with the V5 model  
+                - Introduced **Watchdog services** for:
+                    - 🔄 Images  
+                    - 📄 PDFs  
+                    - 🎧 Audio  
+                - Automatic:
+                    - detection of file creation/deletion  
+                    - embedding extraction  
+                    - DB insertion/removal  
+                - Removed all manual “rebuild” buttons from UI  
+                - Massive codebase cleanup and folder restructuring  
 
                 ---
-                ## 🟢 **v1.6 — Audio Search Integration (November 2025)**  
-                - Integrated **Audio Semantic Search**  
-                - Added dual audio directories  
+                ## 🟢 **v1.6 — Audio Search Integration (November 2025)**
                 - Whisper transcription engine  
-                - Hybrid search  
-                - Cached audio embeddings  
-                - Unified preprocessing  
+                - M-CLIP semantic audio search  
+                - Emotion Model V5 integration  
+                - Word-level timestamp detection  
+                - Audio visualization module  
 
                 ---
                 ## 🟢 **v1.5 — Stable Release (October 2025)**
-                - Full **PDF-to-PDF** and **Text-to-PDF** retrieval  
-                - Added Application Info tab  
-                - Improved UI design  
-                - Refined thresholds
+                - Full PDF search module  
+                - PDF per-page processing  
+                - Document similarity module  
+                - UI improvements  
 
                 ---
                 ## 🟠 **v1.4 — Core Integration (September 2025)**
-                - Modular UI tabs  
-                - Global caching system  
+                - Modular UI  
+                - Caching system  
+                - Layout refactoring  
 
                 ---
-                ## 🟡 **v1.3 — M-CLIP Integration (August 2025)**
+                ## 🟡 **v1.3 — M-CLIP (August 2025)**
                 - Multilingual CLIP  
-                - Cross-modal semantic search  
+                - Unified embedding space  
 
                 ---
                 ## 🔵 **v1.2 — Visual Search Prototype (June 2025)**
                 - Text → Image  
                 - Image → Image  
-                - COCO experiments  
 
                 ---
-                ## ⚪ **v1.1 — Research Setup (May 2025)**
-                - Dataset initialization  
+                ## ⚪ **v1.1 — Research Setup (May 2025)**  
 
                 ---
                 ## ⚫ **v1.0 — Project Start (April 2025)**
-                - Research planning
-            """)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ======================================================
-    # 🧾 NEXT PLANNED UPDATES — CARD
-    # ======================================================
-    st.markdown('<div class="stCard">', unsafe_allow_html=True)
-    with st.container():
-        with st.expander("🧾 Next Planned Updates", expanded=False):
-            st.markdown("""
-                - 🎥 Video search (frame-level embeddings)  
-                - 🎚️ Hybrid audio-video retrieval  
-                - 🗂️ Metadata-based ranking  
-                - 📊 Heatmap visualization  
-                - ⚡ Faster keyword segmentation  
             """)
     st.markdown('</div>', unsafe_allow_html=True)
 
