@@ -40,6 +40,10 @@ if __name__ == "__main__":
     )
 
     # -------------------------
+    # PROCESS 3 → Audios
+    # -------------------------
+
+    # -------------------------
     # PROCESS 3 → STREAMLIT
     # -------------------------
     p_streamlit = multiprocessing.Process(
