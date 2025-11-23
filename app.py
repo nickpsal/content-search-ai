@@ -170,7 +170,7 @@ st.markdown(f"""
         <p style="margin-top:4px;color:#9aa0a6;font-size:1.1rem;">
             Search Content in Multimedia Digital Archives using AI
         </p>
-        <p style="margin-top:-8px;color:#9aa0a6;font-size:0.9rem;">Version 1.6</p>
+        <p style="margin-top:-8px;color:#9aa0a6;font-size:0.9rem;">Version 1.7</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
