@@ -366,7 +366,7 @@ with tabs[2]:
     query = st.text_input(
         "✍️ Enter your search query",
         value="",
-        on_change=trigger_text_search  # <-- ENTER triggers search
+        on_change=trigger_text_search
     )
 
     run_btn = st.button("🔎 Run Text Search")
