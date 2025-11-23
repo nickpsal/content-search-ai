@@ -182,8 +182,6 @@ searcher = ImageSearcher()
 audio = AudioSearcher()
 
 pdf = PDFSearcher()
-pdf.download_pdf_data()
-
 # ======================================================
 # 🧭 TABS SETUP
 # ======================================================
@@ -192,8 +190,8 @@ tabs = st.tabs([
     "⚙️ Application Settings",
     "💬 Search: Text → Image",
     "🖼️ Search: Image → Image",
-    "📚 Search: PDF → PDF",
     "💬 Search: Text → PDF",
+    "📚 Search: PDF → PDF",
     "🎧 Search: Text → Audio",
     "🎥 Search: Video Search"
 ])
@@ -443,16 +441,18 @@ with tabs[3]:
 # ======================================================
 # 📚 PDF → PDF SEARCH
 # ======================================================
-with tabs[4]:
+with tabs[5]:
     st.subheader("📚 PDF-to-PDF Similarity Search")
 
     uploaded_pdf = st.file_uploader("📤 Upload a PDF to compare", type=["pdf"])
     base_folder = "./data/pdfs"
     query_folder = "./data/query"
+
     os.makedirs(base_folder, exist_ok=True)
     os.makedirs(query_folder, exist_ok=True)
 
     if uploaded_pdf is not None:
+        # Save uploaded PDF to query folder
         query_path = os.path.join(query_folder, uploaded_pdf.name)
         with open(query_path, "wb") as f:
             f.write(uploaded_pdf.getbuffer())
@@ -460,39 +460,49 @@ with tabs[4]:
         st.success(f"✅ Uploaded: {uploaded_pdf.name}")
         st.info("Analyzing document similarity...")
 
-        searcher = PDFSearcher("./models/mclip_finetuned_coco_ready")
+        # SQLite-powered PDF searcher
+        searcher = PDFSearcher(db_path="content_search_ai.db")
 
         with st.spinner("Processing and comparing PDFs..."):
-            results = searcher.search_similar_pdfs(query_pdf=query_path, folder=base_folder, top_k=top_k)
+            results = searcher.search_similar_pdfs(
+                query_pdf_path=query_path,
+                top_k=top_k
+            )
 
         if not results:
             st.warning("❌ No strong matches found.")
         else:
             st.success(f"✅ Found {len(results)} similar documents.")
+
             for r in results:
+                filename = os.path.basename(r["pdf"])
                 color = "🟢" if r["score"] >= 0.98 else "🟠" if r["score"] >= 0.95 else "🔴"
-                st.markdown(f"### {color} {r['file']} — Page {r['page']} — Score: `{r['score']:.4f}`")
-                st.caption(f"**Snippet:** {r['snippet']}")
-                pdf_path = os.path.join(base_folder, r["file"])
-                with open(pdf_path, "rb") as f:
-                    pdf_data = f.read()
-                st.download_button(
-                    label=f"⬇️ Download {r['file']}",
-                    data=pdf_data,
-                    file_name=r["file"],
-                    mime="application/pdf"
+
+                st.markdown(
+                    f"### {color} {filename} — Page {r['page']} — Score: `{r['score']:.4f}`"
                 )
+                st.caption(f"**Snippet:** {r['snippet']}")
+
+                # Load PDF file bytes for download
+                with open(r["pdf"], "rb") as f:
+                    pdf_data = f.read()
+
+                st.download_button(
+                    label=f"⬇️ Download {filename}",
+                    data=pdf_data,
+                    file_name=filename,
+                    mime="application/pdf",
+                    key=f"download_{filename}_{r['page']}"
+                )
+
                 st.markdown("---")
 
 # ======================================================
 # 💬 TEXT → PDF SEARCH
 # ======================================================
-with tabs[5]:
+with tabs[4]:
     st.subheader("💬 Text-to-PDF Semantic Search")
     query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
-
-    base_folder = "./data/pdfs"
-    os.makedirs(base_folder, exist_ok=True)
 
     if st.button("🔍 Run Text → PDF Search"):
         if not query_text.strip():
@@ -500,28 +510,35 @@ with tabs[5]:
         else:
             st.info(f"Searching for: '{query_text}' ...")
 
-            searcher = PDFSearcher("./models/mclip_finetuned_coco_ready")
+            searcher = PDFSearcher(db_path="content_search_ai.db")
 
-            with st.spinner("Analyzing PDFs..."):
-                results = searcher.search_by_text(query_text, folder=base_folder, top_k=top_k)
+            with st.spinner("Processing and comparing PDFs..."):
+                results = searcher.search_by_text(query_text=query_text, top_k=top_k)
 
             if not results:
-                st.warning("No matching PDFs found.")
+                st.warning("❌ No matching PDFs found.")
             else:
                 st.success(f"✅ Found {len(results)} relevant PDFs!")
+
                 for r in results:
-                    st.markdown(f"### 📄 {r['file']} (Page {r['page']}) — Score: `{r['score']:.4f}`")
-                    st.caption(f"**Snippet:** {r['snippet']}")
-                    pdf_path = os.path.join(base_folder, r["file"])
-                    with open(pdf_path, "rb") as f:
-                        pdf_data = f.read()
-                    st.download_button(
-                        label=f"⬇️ Download {r['file']}",
-                        data=pdf_data,
-                        file_name=r["file"],
-                        mime="application/pdf",
-                        key=f"download_{r['file']}_{r['page']}"
+                    filename = os.path.basename(r["pdf"])
+
+                    st.markdown(
+                        f"### 📄 {filename} (Page {r['page']}) — Score: `{r['score']:.4f}`"
                     )
+                    st.caption(f"**Snippet:** {r['snippet']}")
+
+                    with open(r["pdf"], "rb") as f:
+                        pdf_data = f.read()
+
+                    st.download_button(
+                        label=f"⬇️ Download {filename}",
+                        data=pdf_data,
+                        file_name=filename,
+                        mime="application/pdf",
+                        key=f"download_{filename}_{r['page']}"
+                    )
+                    st.markdown("---")
 
 # ======================================================
 # 🎧 AUDIO SEARCH (PLACEHOLDER)

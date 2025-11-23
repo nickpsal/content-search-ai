@@ -1,71 +1,57 @@
 import os
-import re
-import fitz  # PyMuPDF
+import sqlite3
+import numpy as np
 import torch
-from tqdm import tqdm
-import gdown
-import zipfile
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 
-def word_overlap(a, b):
-    """Calculate the number of shared words between two text segments."""
-    a_words = set(a.lower().split())
-    b_words = set(b.lower().split())
-    return len(a_words.intersection(b_words))
 
 class PDFSearcher:
     """
-    PDF Similarity Searcher using a fine-tuned M-CLIP model.
-    Works only with machine-readable PDFs (not scanned images).
-    Performs per-page semantic comparison for higher precision.
+    PDF Searcher — SQLite Powered
+    Uses:
+      • pdf_pages table
+      • M-CLIP text encoder
+    Supports:
+      • TEXT → PDF search
+      • PDF → PDF search (using precomputed embeddings)
     """
-    def __init__(self, model_path="./models/mclip_finetuned_coco_ready", device=None):
-        self.model_path = model_path
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"🧠 Loading M-CLIP model from: {model_path} on {self.device}")
+
+    def __init__(self, db_path="content_search_ai.db", model_path="./models/mclip_finetuned_coco_ready"):
+        self.db_path = db_path
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        print(f"🧠 Loading M-CLIP model from {model_path} on {self.device}")
         self.model = SentenceTransformer(model_path, device=self.device)
-        self.min_score = 0.90  # minimum similarity threshold
-        self.min_chars = 80    # minimum number of characters per page
 
-    # ==========================================================
-    # Download data pdf folder
-    # ==========================================================
-    @staticmethod
-    def download_pdf_data():
-        data_id = "1C4svye202Tt0cwK-tXY39QBQpyMioW_k"
-        os.makedirs("./data", exist_ok=True)
-        url = f"https://drive.google.com/uc?id={data_id}"
-        output_path = "./data/pdf_data.zip"
-        data_zip = os.path.join("./data", "pdf_data.zip")
-        pdf_dir = os.path.abspath("./data")
+        # results threshold
+        self.min_score = 0.90
 
-        if len(os.listdir(pdf_dir)) > 0:
-            print(f"✅ Pdf Data already exists in {pdf_dir}")
-            return
+    # =======================================
+    # LOAD ALL EMBEDDINGS FROM SQLITE
+    # =======================================
+    def _load_pdf_embeddings(self):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
 
-        #Download Pdfs Data Folder from Google Drive
-        print("\n📥 Downloading model from Google Drive...")
-        gdown.download(url, output_path, quiet=False, fuzzy=True)
-        print(f"✅ File saved to: {output_path}")
+        cursor.execute("SELECT pdf_path, page_number, text_content, embedding FROM pdf_pages")
+        rows = cursor.fetchall()
+        conn.close()
 
-        # Checking if it is a valid zip
-        if not zipfile.is_zipfile(data_zip):
-            print("❌ Downloaded file is not a valid ZIP. Check the Google Drive link ID.")
-            return
+        pdf_pages = []
+        for pdf_path, page_number, text_content, blob in rows:
+            vec = np.frombuffer(blob, dtype=np.float32)
+            pdf_pages.append({
+                "pdf_path": pdf_path,
+                "page": page_number,
+                "text": text_content,
+                "vector": vec
+            })
 
-        # eExtracting zip
-        with zipfile.ZipFile(data_zip, 'r') as zip_ref:
-            files = zip_ref.namelist()
-            print(f"\n📦 Extracting {len(files)} files into {pdf_dir}...")
-            for file in tqdm(files, desc="Extracting", unit="file"):
-                zip_ref.extract(file, pdf_dir)
+        return pdf_pages
 
-        os.remove(data_zip)
-        print(f"✅ Model extracted successfully into {data_zip}")
-
-    # ==========================================================
-    # Extract page embeddings (no OCR)
-    # ==========================================================
+    # =======================================
+    # EXTRACT EMBENDINGS FOR PDF -> PDF
+    # =======================================
     def get_pdf_pages_embeddings(self, pdf_path):
         pages = []
         valid_pages = 0
@@ -76,32 +62,33 @@ class PDFSearcher:
                 total_pages = len(doc)
 
                 for i, page in enumerate(doc):
-                    page_text = page.get_text("text").strip()
-                    if not page_text or len(page_text) < self.min_chars:
+                    text = page.get_text("text").strip()
+                    if not text or len(text) < self.min_chars:
                         continue
 
-                    # Clean up unwanted characters and noise
-                    clean_text = re.sub(r"[^A-Za-zΑ-Ωα-ω\s]", " ", page_text)
+                    clean_text = re.sub(r"[^A-Za-zΑ-Ωα-ω\s]", " ", text)
                     words = [w for w in clean_text.split() if len(w) > 2]
                     if len(words) < 10:
                         continue
 
-                    # Text quality ratio (letters / total characters)
-                    letters = sum(c.isalpha() for c in page_text)
-                    ratio = letters / (len(page_text) + 1)
+                    letters = sum(c.isalpha() for c in text)
+                    ratio = letters / (len(text) + 1)
                     if ratio < 0.6:
                         continue
 
                     valid_pages += 1
-                    emb = self.model.encode(page_text, convert_to_tensor=True, normalize_embeddings=True)
-                    pages.append((i + 1, emb, page_text))
 
-            # Skip documents with low text density
+                    emb = self.model.encode(
+                        text,
+                        convert_to_tensor=True,
+                        normalize_embeddings=True
+                    )
+
+                    pages.append((i + 1, emb, text))
+
             if total_pages > 0:
-                valid_ratio = valid_pages / total_pages
-                if valid_ratio < 0.4:
-                    print(f"🚫 Skipping {os.path.basename(pdf_path)} "
-                          f"→ valid_ratio={valid_ratio:.2f}")
+                if valid_pages / total_pages < 0.4:
+                    print("🚫 Low text density, skipping.")
                     return []
 
         except Exception as e:
@@ -109,98 +96,95 @@ class PDFSearcher:
 
         return pages
 
-    # ==========================================================
-    # PDF → PDF Search (page-based semantic comparison)
-    # ==========================================================
-    def search_similar_pdfs(self, query_pdf, folder="./data/pdfs", top_k=5):
-        query_pages = self.get_pdf_pages_embeddings(query_pdf)
-        if not query_pages:
-            print("❌ No valid text found in the query PDF.")
+    # =======================================
+    # TEXT → PDF
+    # =======================================
+    def search_by_text(self, query_text, top_k=5):
+        print(f"\n💬 Text query: {query_text}")
+
+        pdf_pages = self._load_pdf_embeddings()
+        if not pdf_pages:
+            print("❌ No PDF embeddings found in SQLite.")
             return []
 
+        # Encode query → M-CLIP
+        query_vec = self.model.encode(
+            query_text,
+            convert_to_numpy=True,
+            normalize_embeddings=True
+        ).astype(np.float32)
+
+        # page-level scoring
         results = []
-        pdf_files = [f for f in os.listdir(folder) if f.lower().endswith(".pdf")]
 
-        for file in tqdm(pdf_files, desc="Comparing PDFs"):
-            pdf_path = os.path.join(folder, file)
-            if os.path.abspath(pdf_path) == os.path.abspath(query_pdf):
-                continue
+        for page in pdf_pages:
+            v = page["vector"]
 
-            target_pages = self.get_pdf_pages_embeddings(pdf_path)
-            if not target_pages:
-                continue
+            similarity = np.dot(query_vec, v) / (np.linalg.norm(query_vec) * np.linalg.norm(v))
 
-            best_score, best_page, best_snippet = 0, None, ""
-            for q_page_num, q_emb, q_text in query_pages:
-                for t_page_num, t_emb, t_text in target_pages:
-                    score = util.cos_sim(q_emb, t_emb).item()
-                    overlap = word_overlap(q_text, t_text)
-
-                    # Require at least 5 shared words to consider as relevant
-                    if score > best_score and overlap >= 5:
-                        best_score = score
-                        best_page = t_page_num
-                        best_snippet = t_text[:300].replace("\n", " ") + "..."
-
-            if best_score >= 0.96:
+            if similarity >= self.min_score:
                 results.append({
-                    "file": file,
-                    "score": best_score,
-                    "page": best_page,
-                    "snippet": best_snippet
+                    "pdf": page["pdf_path"],
+                    "score": float(similarity),
+                    "page": page["page"],
+                    "snippet": page["text"][:300].replace("\n", " ") + "..."
                 })
 
+        # sort by score
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 
-    # ==========================================================
-    # TEXT → PDF Search
-    # ==========================================================
-    def search_by_text(self, query_text, folder="./data/pdfs", top_k=5):
-        print(f"\n💬 Text query: {query_text}")
-        query_emb = self.model.encode(query_text, convert_to_tensor=True, normalize_embeddings=True)
-        results = []
+    # =======================================
+    # PDF → PDF (using stored embeddings)
+    # =======================================
+    def search_similar_pdfs(self, query_pdf_path, top_k=5):
+        pdf_pages = self._load_pdf_embeddings()
+        if not pdf_pages:
+            print("❌ No PDF embeddings found in SQLite.")
+            return []
 
-        pdf_files = [f for f in os.listdir(folder) if f.lower().endswith(".pdf")]
+        # compare by filename only
+        query_filename = os.path.basename(query_pdf_path)
 
-        for file in tqdm(pdf_files, desc="Searching PDFs"):
-            pdf_path = os.path.join(folder, file)
-            best_score = 0
-            best_page = None
-            best_snippet = ""
+        # find query pages
+        query_pages = [
+            p for p in pdf_pages
+            if os.path.basename(p["pdf_path"]) == query_filename
+        ]
 
-            try:
-                with fitz.open(pdf_path) as doc:
-                    for i, page in enumerate(doc):
-                        page_text = page.get_text("text").strip()
-                        if len(page_text) < self.min_chars:
-                            continue
+        if not query_pages:
+            print(f"⚠️ No embeddings stored for file: {query_filename}")
+            return []
 
-                        emb = self.model.encode(page_text, convert_to_tensor=True, normalize_embeddings=True)
-                        score = util.cos_sim(query_emb, emb).item()
+        results = {}
 
-                        if score > best_score:
-                            best_score = score
-                            best_page = i + 1
-                            best_snippet = page_text[:300].replace("\n", " ") + "..."
+        for q_page in query_pages:
+            q_vec = q_page["vector"]
 
-            except Exception as e:
-                print(f"⚠️ Error reading {pdf_path}: {e}")
-                continue
+            for t_page in pdf_pages:
+                target_filename = os.path.basename(t_page["pdf_path"])
 
-            if best_score >= self.min_score:
-                results.append({
-                    "file": file,
-                    "score": best_score,
-                    "page": best_page,
-                    "snippet": best_snippet
-                })
+                # skip same file
+                if target_filename == query_filename:
+                    continue
 
-        results.sort(key=lambda x: x["score"], reverse=True)
+                t_vec = t_page["vector"]
 
-        if not results:
-            print("❌ No relevant matches found.")
-        else:
-            print(f"✅ Found {len(results)} relevant PDFs (≥ {self.min_score:.2f})")
+                similarity = float(
+                    np.dot(q_vec, t_vec) /
+                    (np.linalg.norm(q_vec) * np.linalg.norm(t_vec))
+                )
 
-        return results[:top_k]
+                if similarity >= self.min_score:
+
+                    if target_filename not in results or similarity > results[target_filename]["score"]:
+                        results[target_filename] = {
+                            "pdf": t_page["pdf_path"],
+                            "score": similarity,
+                            "page": t_page["page"],
+                            "snippet": t_page["text"][:300].replace("\n", " ") + "..."
+                        }
+
+        final = list(results.values())
+        final.sort(key=lambda x: x["score"], reverse=True)
+        return final[:top_k]
