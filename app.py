@@ -294,13 +294,25 @@ with tabs[0]:
     with st.container():
         with st.expander("📘 Version History", expanded=False):
             st.markdown("""
+                ## 🟢 **v1.7 — SQLite Database Integration (November 2025)**  
+                - Added **unified SQLite database** for all modalities  
+                - Removed all old local files: image embeddings, audio embeddings, PDF embeddings, transcripts, captions  
+                - Merged text/image/PDF/audio data into single DB  
+                - Added **relative filesystem paths** (cross-platform support)  
+                - Cleaned + rebuilt transcripts table  
+                - Cleaned + rebuilt emotion predictions table  
+                - Fixed duplicate absolute paths (D:/, C:/, etc.)  
+                - Full production cleanup of file structure  
+                - Simplified Streamlit code — no need for rebuild buttons  
+
+                ---
                 ## 🟢 **v1.6 — Audio Search Integration (November 2025)**  
                 - Integrated **Audio Semantic Search**  
-                - Added dual audio folders  
+                - Added dual audio directories  
                 - Whisper transcription engine  
                 - Hybrid search  
                 - Cached audio embeddings  
-                - Preprocessing pipeline  
+                - Unified preprocessing  
 
                 ---
                 ## 🟢 **v1.5 — Stable Release (October 2025)**
