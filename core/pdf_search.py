@@ -1,19 +1,14 @@
-import os
 import sqlite3
 import numpy as np
 import torch
+import re
+import fitz
 from sentence_transformers import SentenceTransformer
 
 
 class PDFSearcher:
     """
     PDF Searcher — SQLite Powered
-    Uses:
-      • pdf_pages table
-      • M-CLIP text encoder
-    Supports:
-      • TEXT → PDF search
-      • PDF → PDF search (using precomputed embeddings)
     """
 
     def __init__(self, db_path="content_search_ai.db", model_path="./models/mclip_finetuned_coco_ready"):
@@ -23,8 +18,8 @@ class PDFSearcher:
         print(f"🧠 Loading M-CLIP model from {model_path} on {self.device}")
         self.model = SentenceTransformer(model_path, device=self.device)
 
-        # results threshold
         self.min_score = 0.90
+        self.min_chars = 50   # 🔥 ΑΠΑΡΑΙΤΗΤΟ
 
     # =======================================
     # LOAD ALL EMBEDDINGS FROM SQLITE
@@ -50,12 +45,11 @@ class PDFSearcher:
         return pdf_pages
 
     # =======================================
-    # EXTRACT EMBENDINGS FOR PDF -> PDF
+    # EXTRACT EMBEDDINGS FOR PDF → DB
     # =======================================
     def get_pdf_pages_embeddings(self, pdf_path):
         pages = []
         valid_pages = 0
-        total_pages = 0
 
         try:
             with fitz.open(pdf_path) as doc:
@@ -80,14 +74,13 @@ class PDFSearcher:
 
                     emb = self.model.encode(
                         text,
-                        convert_to_tensor=True,
+                        convert_to_numpy=True,
                         normalize_embeddings=True
-                    )
+                    ).astype(np.float32)
 
                     pages.append((i + 1, emb, text))
 
-            if total_pages > 0:
-                if valid_pages / total_pages < 0.4:
+                if valid_pages < 1:
                     print("🚫 Low text density, skipping.")
                     return []
 
@@ -97,94 +90,33 @@ class PDFSearcher:
         return pages
 
     # =======================================
-    # TEXT → PDF
+    # TEXT → PDF SEARCH
     # =======================================
     def search_by_text(self, query_text, top_k=5):
-        print(f"\n💬 Text query: {query_text}")
-
         pdf_pages = self._load_pdf_embeddings()
         if not pdf_pages:
-            print("❌ No PDF embeddings found in SQLite.")
+            print("❌ No PDF embeddings found.")
             return []
 
-        # Encode query → M-CLIP
         query_vec = self.model.encode(
             query_text,
             convert_to_numpy=True,
             normalize_embeddings=True
         ).astype(np.float32)
 
-        # page-level scoring
         results = []
-
         for page in pdf_pages:
             v = page["vector"]
 
-            similarity = np.dot(query_vec, v) / (np.linalg.norm(query_vec) * np.linalg.norm(v))
+            sim = np.dot(query_vec, v) / (np.linalg.norm(query_vec) * np.linalg.norm(v))
 
-            if similarity >= self.min_score:
+            if sim >= self.min_score:
                 results.append({
                     "pdf": page["pdf_path"],
-                    "score": float(similarity),
+                    "score": float(sim),
                     "page": page["page"],
                     "snippet": page["text"][:300].replace("\n", " ") + "..."
                 })
 
-        # sort by score
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
-
-    # =======================================
-    # PDF → PDF (using stored embeddings)
-    # =======================================
-    def search_similar_pdfs(self, query_pdf_path, top_k=5):
-        pdf_pages = self._load_pdf_embeddings()
-        if not pdf_pages:
-            print("❌ No PDF embeddings found in SQLite.")
-            return []
-
-        # compare by filename only
-        query_filename = os.path.basename(query_pdf_path)
-
-        # find query pages
-        query_pages = [
-            p for p in pdf_pages
-            if os.path.basename(p["pdf_path"]) == query_filename
-        ]
-
-        if not query_pages:
-            print(f"⚠️ No embeddings stored for file: {query_filename}")
-            return []
-
-        results = {}
-
-        for q_page in query_pages:
-            q_vec = q_page["vector"]
-
-            for t_page in pdf_pages:
-                target_filename = os.path.basename(t_page["pdf_path"])
-
-                # skip same file
-                if target_filename == query_filename:
-                    continue
-
-                t_vec = t_page["vector"]
-
-                similarity = float(
-                    np.dot(q_vec, t_vec) /
-                    (np.linalg.norm(q_vec) * np.linalg.norm(t_vec))
-                )
-
-                if similarity >= self.min_score:
-
-                    if target_filename not in results or similarity > results[target_filename]["score"]:
-                        results[target_filename] = {
-                            "pdf": t_page["pdf_path"],
-                            "score": similarity,
-                            "page": t_page["page"],
-                            "snippet": t_page["text"][:300].replace("\n", " ") + "..."
-                        }
-
-        final = list(results.values())
-        final.sort(key=lambda x: x["score"], reverse=True)
-        return final[:top_k]

@@ -33,3 +33,26 @@ class DatabaseHelper:
         """, (filename, rel_path, embedding))
         conn.commit()
         conn.close()
+
+    # -------------------------------
+    # DELETE PDF
+    # -------------------------------
+    def delete_pdf(self, rel_path):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM pdf_pages WHERE pdf_path = ?", (rel_path,))
+        conn.commit()
+        conn.close()
+
+    # -------------------------------
+    # INSERT PDF PAGE
+    # -------------------------------
+    def insert_pdf_page(self, rel_path, page_number, text, embedding_bytes):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+               INSERT INTO pdf_pages (pdf_path, page_number, text_content, embedding)
+               VALUES (?, ?, ?, ?)
+           """, (rel_path, page_number, text, embedding_bytes))
+        conn.commit()
+        conn.close()
