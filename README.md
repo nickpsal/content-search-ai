@@ -3,148 +3,145 @@
 
 This repository is part of a university thesis project focused on **multimodal semantic search** inside **digital multimedia archives** (Images, PDFs, Audio) using **Artificial Intelligence** models such as **CLIP**, **M-CLIP**, and **Whisper**.
 
-The system supports **text-based search**, **image similarity**, **PDF semantic retrieval**, and **audio semantic/emotion-based search**, all unified into a single Streamlit interface.
+The system supports **text-based search**, **image similarity**, **PDF semantic retrieval**, **audio semantic + emotion-based search**, **real-time filesystem indexing**, and a unified **SQLite-powered** embedding database.  
+All functionalities are exposed through a modern **Streamlit web interface**.
 
 ---
 
-## 📁 Project Structure
+## 📁 Updated Project Structure (with Watchdogs + Database Integration)
 
 ```
 content-search-ai/
 ├── data/
-│   ├── images/                
-│   ├── pdfs/                  
-│   ├── audio/                 
-│   ├── transcripts/           
-│   ├── embeddings/            
-│   └── emotions/              
+│   ├── images/
+│   │   ├── coco/                
+│   │   └── other/               # 🆕 Watchdog-monitored folder for new images
+│   ├── pdfs/                    # 🆕 Watchdog-monitored folder for PDFs
+│   ├── audio/
+│   │   ├── AudioWAV/            # Main dataset (RAVDESS, CREMA-D etc.)
+│   │   └── audio_other/         # 🆕 Watchdog-monitored folder for .wav files
+│   ├── transcripts/             # Auto-generated (legacy – now replaced by DB)
+│   ├── emotions/                # Cached emotion predictions (legacy)
+│   └── embeddings/              # Cached transcript embeddings (legacy)
 │
 ├── core/
-│   ├── image_search.py        
-│   ├── pdf_search.py          
-│   ├── audio_search.py        
-│   ├── emotion_model_v5.py    
-│   └── tools.py               
+│   ├── image_search.py          # CLIP/M-CLIP image retrieval
+│   ├── pdf_search.py            # PDF semantic page search
+│   ├── audio_search.py          # Whisper + MCLIP + Emotion Search
+│   ├── emotion_model_v5.py      # Fine-tuned emotion classifier
+│   ├── db/
+│   │   └── database_helper.py   # 🆕 Unified DB handler (images, pdfs, audio)
+│   └── watchdog/
+│       ├── watch_images_other.py  # 🆕 Realtime IMAGE watcher
+│       ├── watch_pdfs.py          # 🆕 Realtime PDF watcher
+│       └── watch_audio_other.py   # 🆕 Realtime AUDIO watcher
 │
-├── app.py                     
-├── main.py                    
-├── environment.yml            
-├── requirements.txt
-└── README.md
+├── app.py                       # Streamlit UI
+├── main.py                      # Starts 3 watchdogs + Streamlit
+├── environment.yml              # Conda environment
+├── requirements.txt             # pip environment
+└── README.md                    # This file
 ```
 
 ---
 
-## 🚀 Implemented Features
+# 🚀 New Features Added
 
-| Category                        | Description                                                                     | Status        |
-|--------------------------------|---------------------------------------------------------------------------------|---------------|
-| 🖼️ **Text → Image**           | Text prompt to COCO/M-CLIP retrieval                                            | ✅ Implemented |
-| 🖼️ **Image → Image**          | Visual similarity search using CLIP embeddings                                  | ✅ Implemented |
-| 📚 **PDF → PDF**              | Semantic document comparison using M-CLIP                                       | ✅ Implemented |
-| 💬 **Text → PDF**             | Text-to-document semantic search                                                | ✅ Implemented |
-| 🎧 **Audio Semantic Search**  | Whisper transcription + MCLIP semantic search on transcripts                    | ✅ Implemented |
-| 🎭 **Emotion Detection**      | Fine-tuned Emotion Model V5                                                     | ✅ Implemented |
-| 🔊 **Keyword Spotting**       | Word-level timestamp detection via Whisper                                      | ✅ Implemented |
-| 🎨 **Audio Visualization**    | Waveform, spectrogram, emotion overlay, query highlight                         | ✅ Implemented |
-| 🎥 **Video Content Search**   | Frame-based & transcript-based indexing                                         | 🚧 Planned    |
+## 🔥 1. Real-Time Watchdog System (Images + PDFs + Audio)
+All three folders are now monitored live:
 
----
+| Folder | Watchdog File | Action |
+|--------|----------------|--------|
+| `data/images/other` | `watch_images_other.py` | Extract CLIP embedding → store in DB |
+| `data/pdfs` | `watch_pdfs.py` | Extract page text + embedding → store in DB |
+| `data/audio/audio_other` | `watch_audio_other.py` | Whisper transcription → M-CLIP → Emotion → store in DB |
 
-## 🧠 Technologies Used
+### ✔ What happens automatically:
+- Add new file → instantly indexed  
+- Delete file → instantly removed from database  
+- No manual embedding scripts anymore  
+- No transcripts CSV files needed  
+- No emotion cache JSON needed (stored in DB)
 
-- **CLIP / M-CLIP (multilingual)**
-- **Sentence-Transformers**
-- **Whisper & Faster-Whisper**
-- **Emotion Model V5 (fine-tuned)**
-- **PyTorch**
-- **FAISS**
-- **Librosa + Matplotlib**
-- **Streamlit**
-- **PyMuPDF**
+Everything is handled by SQLite.
 
 ---
 
-## ⚙️ How It Works
+# 🧠 Database Structure (Updated)
 
-The system computes embeddings for:
-- Images  
-- PDFs  
-- Audio transcripts  
+### `images`
+```
+id | filename | image_path | embedding (BLOB)
+```
 
-Audio module supports:
-- Word-level timestamps  
-- Query-based segment highlighting  
-- Emotion classification  
-- Waveform + spectrogram visualization  
+### `pdf_pages`
+```
+id | pdf_path | page_number | text_content | embedding (BLOB)
+```
 
-Similarity uses **cosine similarity**.
+### `audio_embeddings`
+```
+id | audio_path | embedding (BLOB)
+```
+
+### `audio_emotions`
+```
+id | audio_path | emotion | emotion_scores_json
+```
+
+Your new system is now a **full multimodal search engine** with **continuous, real-time indexing**.
 
 ---
 
-## 🧩 Execution Modes
+# ⚙️ Installation Guide (Unified – one place only)
 
-### 1️⃣ CLI Mode
-```
-python main.py
-```
+## 1️⃣ Conda Installation (recommended)
 
-### 2️⃣ Streamlit Web App
-```
-streamlit run app.py
-```
-Open browser:
-```
-http://localhost:8501
-```
-
----
-
-## 🧪 Example Queries
-
-| Type           | Example Query                     | Output                                         |
-|----------------|----------------------------------|------------------------------------------------|
-| Text → Image   | “People on bicycles at sunset”   | COCO images ranked by similarity              |
-| Image → Image  | Upload any portrait               | Similar portraits                              |
-| Text → PDF     | “Neural networks”                | Relevant PDF sections                          |
-| Audio Search   | “καλησπέρα”                      | Highlighted audio segment                      |
-| Emotion Search | “happy”                          | Audio clips with happy emotion                 |
-
----
-
-## 🧭 Development Progress
-
-| Phase       | Description                     | Status        |
-|-------------|---------------------------------|---------------|
-| Phase 1     | Image search                    | ✅ Completed  |
-| Phase 2     | PDF search                      | ✅ Completed  |
-| Phase 3     | Audio semantic + emotion search | ✅ Completed  |
-| Phase 4     | Video indexing                  | 🚧 Pending    |
-
----
-
-## 🧰 Installation
-
-### Conda
 ```
 conda env create -f environment.yml
 conda activate content-search-ai
 ```
 
-### pip
+## 2️⃣ pip Installation (alternative)
+
 ```
 pip install -r requirements.txt
 ```
 
 ---
 
-## 👨‍💻 Author
-**Thesis by:** Nikolaos Psaltakis  
-**University of West Attica**  
-**Department of Computer Science**  
-**Year:** 2025  
+# ▶️ How to Run the System
+
+### **Start the full multimodal system:**
+```
+python main.py
+```
+
+This launches:
+
+- 🖼 Watchdog for Images  
+- 📄 Watchdog for PDFs  
+- 🎧 Watchdog for Audio  
+- 🌐 Streamlit UI
+
+Access UI:  
+👉 http://localhost:8501
 
 ---
 
-## 📜 License
-Academic use only. Commercial use requires permission.
+# 🔥 Roadmap (Future)
+
+- Video indexing (frame sampling + transcript + embeddings)
+- Large-scale FAISS migration (GPU)
+- Improved PDF OCR for scanned documents
+
+---
+
+# 👨‍💻 Author
+**Thesis by:** Nikolaos Psaltakis  
+University of West Attica – Department of Computer Science
+
+---
+
+# 📜 License
+Academic use only.

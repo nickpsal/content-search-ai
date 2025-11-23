@@ -15,14 +15,22 @@ dependencies:
   - pillow
   - requests
   - ffmpeg
+  - soundfile
+  - librosa
+  - watchdog
+  - sqlite
 
-  # --- PyTorch & Vision Stack (CPU only, synced versions) ---
+  # --- PyTorch (CPU ONLY) ---
   - pytorch=2.4.1
   - torchvision=0.19.1
   - torchaudio=2.4.1
   - cpuonly
-  - pycocotools
+
+  # --- Optimization / Vector Search ---
   - faiss-cpu
+
+  # --- PDF tools ---
+  - pymupdf  # (PyMuPDF)
 
   # --- Jupyter Environment ---
   - ipykernel
@@ -34,20 +42,21 @@ dependencies:
       - transformers>=4.45.0
       - sentence-transformers>=3.0.0
       - huggingface-hub
+      - gdown
+      - regex
+      - ftfy
+      - tiktoken
+
+      # --- CLIP (OpenAI version) ---
       - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
 
-      # --- App & Interface ---
+      # --- Whisper (FAST) ---
+      - faster-whisper>=1.0.3
+
+      # --- Streamlit UI ---
       - streamlit>=1.38.0
+
+      # --- Misc ---
+      - python-multipart
       - opencv-python
-      - deep-translator
       - pygame
-
-      # --- NLP & Utilities ---
-      - ftfy
-      - regex
-      - tiktoken
-      - gdown          # ✅ downlaod google drive
-      - PyMuPDF        # ✅ fitz for pdf
-
-      # --- Whisper for Audio ---
-      - openai-whisper
