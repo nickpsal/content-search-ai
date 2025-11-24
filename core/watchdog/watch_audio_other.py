@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from jupyter_server.terminal import initialize
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -44,6 +45,9 @@ class AudioOtherHandler(FileSystemEventHandler):
         db_path = self.base_dir / "content_search_ai.db"
         print("📌 AUDIO DB Path =", db_path)
         self.db = DatabaseHelper(str(db_path))
+
+        #initialise Database
+        self.db.initialise_database()
 
         # -------------------------
         # Paths

@@ -9,6 +9,62 @@ class DatabaseHelper:
     def __init__(self, db_path):
         self.db_path = db_path
 
+    def initialise_database(self):
+        if os.path.exists(self.db_path):
+            print("🗄️ Database already exists → OK")
+            return
+
+        print(f"🆕 Creating database at: {self.db_path}")
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+           CREATE TABLE IF NOT EXISTS images (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               filename TEXT,
+               filepath TEXT,
+               embedding BLOB,
+               created_at TEXT
+           );
+           """)
+
+        cursor.execute("""
+           CREATE TABLE IF NOT EXISTS pdf_pages (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               filename TEXT,
+               page_number INTEGER,
+               text TEXT,
+               embedding BLOB,
+               created_at TEXT
+           );
+           """)
+
+        cursor.execute("""
+           CREATE TABLE IF NOT EXISTS audio_transcripts (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               filename TEXT,
+               transcript TEXT,
+               emotion TEXT,
+               created_at TEXT
+           );
+           """)
+
+        cursor.execute("""
+           CREATE TABLE IF NOT EXISTS search_logs (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               query TEXT,
+               modality TEXT,
+               results TEXT,
+               searched_at TEXT
+           );
+           """)
+
+        conn.commit()
+        conn.close()
+
+        print("✅ Database created successfully.")
+
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
 
