@@ -45,9 +45,6 @@ class AudioOtherHandler(FileSystemEventHandler):
         print("📌 AUDIO DB Path =", db_path)
         self.db = DatabaseHelper(str(db_path))
 
-        #initialise Database
-        self.db.initialise_database()
-
         # -------------------------
         # Paths
         # -------------------------

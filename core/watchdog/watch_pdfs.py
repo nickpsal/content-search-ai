@@ -45,9 +45,6 @@ class PDFHandler(FileSystemEventHandler):
         print("📌 DB Path =", self.db_path)
         self.db = DatabaseHelper(str(self.db_path))
 
-        #initialise Database
-        self.db.initialise_database()
-
         # -------------------------
         # PDF Search Model
         # -------------------------

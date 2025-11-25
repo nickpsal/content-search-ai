@@ -1,5 +1,6 @@
 # core/db/database_helper.py
 import sqlite3
+from msilib import init_database
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent.parent / "content_search_ai.db"
@@ -8,6 +9,9 @@ DB_PATH = Path(__file__).resolve().parent.parent / "content_search_ai.db"
 class DatabaseHelper:
     def __init__(self, db_path):
         self.db_path = db_path
+        
+        #initialise database
+        self.initialise_database()
 
     def initialise_database(self):
         if os.path.exists(self.db_path):

@@ -49,9 +49,6 @@ class ImageFolderHandler(FileSystemEventHandler):
         print("📌 Initializing DB helper…")
         self.db = DatabaseHelper(str(db_path))
 
-        #initialise Database
-        self.db.initialise_database()
-
         # ------------------------
         # Model
         # ------------------------
