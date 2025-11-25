@@ -1,5 +1,6 @@
 # core/db/database_helper.py
 import sqlite3
+import os
 from msilib import init_database
 from pathlib import Path
 
@@ -9,10 +10,13 @@ DB_PATH = Path(__file__).resolve().parent.parent / "content_search_ai.db"
 class DatabaseHelper:
     def __init__(self, db_path):
         self.db_path = db_path
-        
+
         #initialise database
         self.initialise_database()
 
+    # =========================================
+    #          INITIALISE DATABASE
+    # =========================================
     def initialise_database(self):
         if os.path.exists(self.db_path):
             print("🗄️ Database already exists → OK")
@@ -75,7 +79,6 @@ class DatabaseHelper:
     # =========================================
     #                 IMAGES
     # =========================================
-
     def delete_image(self, rel_path):
         conn = self._get_conn()
         cur = conn.cursor()
@@ -96,7 +99,6 @@ class DatabaseHelper:
     # =========================================
     #                   PDFs
     # =========================================
-
     def delete_pdf(self, rel_path):
         conn = self._get_conn()
         cur = conn.cursor()
@@ -117,7 +119,6 @@ class DatabaseHelper:
     # =========================================
     #                  AUDIO
     # =========================================
-
     # ------- AUDIO EMBEDDINGS -------
     def insert_audio_embedding(self, audio_path, embedding_bytes):
         conn = self._get_conn()
