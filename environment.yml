@@ -5,7 +5,6 @@ channels:
   - defaults
 
 dependencies:
-  # --- Core Environment ---
   - python=3.11
   - pip
   - numpy
@@ -15,48 +14,37 @@ dependencies:
   - pillow
   - requests
   - ffmpeg
-  - soundfile
   - librosa
   - watchdog
   - sqlite
 
-  # --- PyTorch (CPU ONLY) ---
+  # PyTorch CPU only
   - pytorch=2.4.1
   - torchvision=0.19.1
   - torchaudio=2.4.1
   - cpuonly
 
-  # --- Optimization / Vector Search ---
+  # Vector search
   - faiss-cpu
 
-  # --- PDF tools ---
-  - pymupdf  # (PyMuPDF)
-
-  # --- Jupyter Environment ---
+  # Jupyter
   - ipykernel
   - jupyterlab
 
-  # --- pip-only Dependencies ---
   - pip:
-      # --- Core AI Libraries ---
-      - transformers>=4.45.0
+      - soundfile
+      - pymupdf
+      - openai-whisper
+      - faster-whisper>=1.0.3
       - sentence-transformers>=3.0.0
+      - transformers>=4.45.0
       - huggingface-hub
-      - gdown
       - regex
       - ftfy
       - tiktoken
-
-      # --- CLIP (OpenAI version) ---
-      - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
-
-      # --- Whisper (FAST) ---
-      - faster-whisper>=1.0.3
-
-      # --- Streamlit UI ---
-      - streamlit>=1.38.0
-
-      # --- Misc ---
+      - gdown
       - python-multipart
       - opencv-python
       - pygame
+      - streamlit>=1.38.0
+      - git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
