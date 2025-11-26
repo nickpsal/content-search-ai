@@ -4,6 +4,7 @@ import streamlit as st
 import base64
 from pathlib import Path
 from core import ImageSearcher, PDFSearcher, Model, AudioSearcher, CoreTools
+import psutil
 
 # ======================================================
 # 🧠 STREAMLIT CONFIGURATION
@@ -18,6 +19,35 @@ st.set_page_config(
 # ======================================================
 st.markdown("""
 <style>
+/* DASHBOARD GRID & CARDS */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.dash-card {
+    background: #141414;
+    border-radius: 18px;
+    border: 1px solid #2a2a2a;
+    padding: 18px 20px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.4);
+    min-height: 120px;
+}
+
+.dash-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+}
+
+.dash-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #999;
+}
+
 [data-testid="stExpander"] {
     background-color: #141414;
     padding: 0;
@@ -186,6 +216,7 @@ pdf = PDFSearcher()
 # 🧭 TABS SETUP
 # ======================================================
 tabs = st.tabs([
+    "📊 Dashboard",
     "ℹ️ Application Info",
     "⚙️ Application Settings",
     "💬 Search: Text → Image",
@@ -197,9 +228,48 @@ tabs = st.tabs([
 ])
 
 # ======================================================
+# 📊 DASHBOARD
+# ======================================================
+with tabs[0]:
+    st.subheader("📊 System Dashboard")
+
+    # Manual refresh button (optional)
+    if st.button("🔄 Refresh Now"):
+        st.rerun()
+
+    # LIVE CPU / RAM
+    cpu_percent = psutil.cpu_percent(interval=0.3)
+    ram_percent = psutil.virtual_memory().percent
+
+    st.markdown(f"""
+    <div class="dashboard-grid">
+        <div class="dash-card">
+            <h3>🧠 System Overview</h3>
+            <p><strong>CPU Usage:</strong> {cpu_percent}%</p>
+            <p><strong>RAM Usage:</strong> {ram_percent}%</p>
+        </div>
+
+        <div class="dash-card">
+            <h3>🖼 Images Watchdog</h3>
+            <p>Placeholder – εδώ θα μπει status για επεξεργασία εικόνων.</p>
+        </div>
+
+        <div class="dash-card">
+            <h3>📄 PDFs Watchdog</h3>
+            <p>Placeholder – εδώ θα μπει status για PDF indexing.</p>
+        </div>
+
+        <div class="dash-card">
+            <h3>🎧 Audio Watchdog</h3>
+            <p>Placeholder – εδώ θα μπει status για audio & emotions.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ======================================================
 # ⚙️ SETTINGS TAB WITH ACCORDIONS
 # ======================================================
-with tabs[1]:
+with tabs[2]:
     st.subheader("⚙️ Application Settings")
 
     # ------------------------------------------------------
@@ -227,7 +297,7 @@ with tabs[1]:
 # ======================================================
 # ℹ️ APPLICATION INFORMATION TAB
 # ======================================================
-with tabs[0]:
+with tabs[1]:
     st.subheader("ℹ️ Application Information")
 
     # ======================================================
