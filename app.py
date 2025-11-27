@@ -223,8 +223,7 @@ tabs = st.tabs([
     "🖼️ Search: Image → Image",
     "💬 Search: Text → PDF",
     "📚 Search: PDF → PDF",
-    "🎧 Search: Text → Audio",
-    "🎥 Search: Video Search"
+    "🎧 Search: Text → Audio"
 ])
 
 # ======================================================
@@ -265,34 +264,6 @@ with tabs[0]:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-# ======================================================
-# ⚙️ SETTINGS TAB WITH ACCORDIONS
-# ======================================================
-with tabs[2]:
-    st.subheader("⚙️ Application Settings")
-
-    # ------------------------------------------------------
-    # DATASET & EMBEDDINGS CONFIG
-    # ------------------------------------------------------
-    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=True):
-
-        st.markdown("### 🖼️ Data Processing")
-        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
-
-        with col1:
-            if st.button("📦 Download COCO Dataset", use_container_width=True):
-                with st.spinner("Downloading COCO Dataset..."):
-                    searcher.download_coco_data()
-                st.success("✅ COCO dataset downloaded successfully!")
-
-    # ------------------------------------------------------
-    # DISPLAY SETTINGS
-    # ------------------------------------------------------
-    with st.expander("🔧 Display Settings", expanded=False):
-        top_k = st.slider("Select number of results per search", 3, 30, 5)
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ======================================================
 # ℹ️ APPLICATION INFORMATION TAB
@@ -419,6 +390,34 @@ with tabs[1]:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ======================================================
+# ⚙️ SETTINGS TAB WITH ACCORDIONS
+# ======================================================
+with tabs[2]:
+    st.subheader("⚙️ Application Settings")
+
+    # ------------------------------------------------------
+    # DATASET & EMBEDDINGS CONFIG
+    # ------------------------------------------------------
+    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=True):
+
+        st.markdown("### 🖼️ Data Processing")
+        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
+
+        with col1:
+            if st.button("📦 Download COCO Dataset", use_container_width=True):
+                with st.spinner("Downloading COCO Dataset..."):
+                    searcher.download_coco_data()
+                st.success("✅ COCO dataset downloaded successfully!")
+
+    # ------------------------------------------------------
+    # DISPLAY SETTINGS
+    # ------------------------------------------------------
+    with st.expander("🔧 Display Settings", expanded=False):
+        top_k = st.slider("Select number of results per search", 3, 30, 5)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ======================================================
 # 💬 TEXT → IMAGE SEARCH
 # ======================================================
 with tabs[2]:
@@ -507,6 +506,49 @@ with tabs[3]:
                     )
 
 # ======================================================
+# 💬 TEXT → PDF SEARCH
+# ======================================================
+with tabs[4]:
+    st.subheader("💬 Text-to-PDF Semantic Search")
+    query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
+
+    if st.button("🔍 Run Text → PDF Search"):
+        if not query_text.strip():
+            st.warning("⚠️ Please enter text before searching.")
+        else:
+            st.info(f"Searching for: '{query_text}' ...")
+
+            searcher = PDFSearcher(db_path="content_search_ai.db")
+
+            with st.spinner("Processing and comparing PDFs..."):
+                results = searcher.search_by_text(query_text=query_text, top_k=top_k)
+
+            if not results:
+                st.warning("❌ No matching PDFs found.")
+            else:
+                st.success(f"✅ Found {len(results)} relevant PDFs!")
+
+                for r in results:
+                    filename = os.path.basename(r["pdf"])
+
+                    st.markdown(
+                        f"### 📄 {filename} (Page {r['page']}) — Score: `{r['score']:.4f}`"
+                    )
+                    st.caption(f"**Snippet:** {r['snippet']}")
+
+                    with open(r["pdf"], "rb") as f:
+                        pdf_data = f.read()
+
+                    st.download_button(
+                        label=f"⬇️ Download {filename}",
+                        data=pdf_data,
+                        file_name=filename,
+                        mime="application/pdf",
+                        key=f"download_{filename}_{r['page']}"
+                    )
+                    st.markdown("---")
+
+# ======================================================
 # 📚 PDF → PDF SEARCH
 # ======================================================
 with tabs[5]:
@@ -564,49 +606,6 @@ with tabs[5]:
                 )
 
                 st.markdown("---")
-
-# ======================================================
-# 💬 TEXT → PDF SEARCH
-# ======================================================
-with tabs[4]:
-    st.subheader("💬 Text-to-PDF Semantic Search")
-    query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
-
-    if st.button("🔍 Run Text → PDF Search"):
-        if not query_text.strip():
-            st.warning("⚠️ Please enter text before searching.")
-        else:
-            st.info(f"Searching for: '{query_text}' ...")
-
-            searcher = PDFSearcher(db_path="content_search_ai.db")
-
-            with st.spinner("Processing and comparing PDFs..."):
-                results = searcher.search_by_text(query_text=query_text, top_k=top_k)
-
-            if not results:
-                st.warning("❌ No matching PDFs found.")
-            else:
-                st.success(f"✅ Found {len(results)} relevant PDFs!")
-
-                for r in results:
-                    filename = os.path.basename(r["pdf"])
-
-                    st.markdown(
-                        f"### 📄 {filename} (Page {r['page']}) — Score: `{r['score']:.4f}`"
-                    )
-                    st.caption(f"**Snippet:** {r['snippet']}")
-
-                    with open(r["pdf"], "rb") as f:
-                        pdf_data = f.read()
-
-                    st.download_button(
-                        label=f"⬇️ Download {filename}",
-                        data=pdf_data,
-                        file_name=filename,
-                        mime="application/pdf",
-                        key=f"download_{filename}_{r['page']}"
-                    )
-                    st.markdown("---")
 
 # ======================================================
 # 🎧 AUDIO SEARCH (PLACEHOLDER)
@@ -719,10 +718,3 @@ with tabs[6]:
 
     # reset για να μην ξανατρέχει σε κάθε refresh
     st.session_state.run_audio_search = False
-
-# ======================================================
-# 🎥 VIDEO SEARCH (PLACEHOLDER)
-# ======================================================
-with tabs[7]:
-    st.subheader("🎥 Video Search (Coming Soon)")
-    st.info("Video similarity search will be implemented in a future version.")
