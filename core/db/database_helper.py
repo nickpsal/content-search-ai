@@ -1,17 +1,13 @@
-# core/db/database_helper.py
 import sqlite3
 import os
-from msilib import init_database
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "content_search_ai.db"
+DB_PATH = Path(__file__).resolve().parents[1] / "content_search_ai.db"
 
 
 class DatabaseHelper:
     def __init__(self, db_path):
         self.db_path = db_path
-
-        #initialise database
         self.initialise_database()
 
     # =========================================
@@ -25,132 +21,179 @@ class DatabaseHelper:
         print(f"🆕 Creating database at: {self.db_path}")
 
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        cur = conn.cursor()
 
-        cursor.execute("""
-           CREATE TABLE IF NOT EXISTS images (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               filename TEXT,
-               filepath TEXT,
-               embedding BLOB,
-               created_at TEXT
-           );
-           """)
+        # ---------------------------
+        # IMAGES
+        # ---------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT,
+                filepath TEXT UNIQUE,
+                embedding BLOB,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
-        cursor.execute("""
-           CREATE TABLE IF NOT EXISTS pdf_pages (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               filename TEXT,
-               page_number INTEGER,
-               text TEXT,
-               embedding BLOB,
-               created_at TEXT
-           );
-           """)
+        # ---------------------------
+        # PDF PAGES
+        # ---------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pdf_pages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pdf_path TEXT,
+                page_number INTEGER,
+                text_content TEXT,
+                embedding BLOB,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
-        cursor.execute("""
-           CREATE TABLE IF NOT EXISTS audio_transcripts (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               filename TEXT,
-               transcript TEXT,
-               emotion TEXT,
-               created_at TEXT
-           );
-           """)
+        # ---------------------------
+        # AUDIO EMBEDDINGS
+        # ---------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS audio_embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                audio_path TEXT UNIQUE,
+                embedding BLOB,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
-        cursor.execute("""
-           CREATE TABLE IF NOT EXISTS search_logs (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               query TEXT,
-               modality TEXT,
-               results TEXT,
-               searched_at TEXT
-           );
-           """)
+        # ---------------------------
+        # AUDIO EMOTIONS
+        # ---------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS audio_emotions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                audio_path TEXT UNIQUE,
+                emotion TEXT,
+                emotion_scores TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # ---------------------------
+        # SEARCH LOGS
+        # ---------------------------
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS search_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query TEXT,
+                modality TEXT,
+                results TEXT,
+                searched_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
         conn.commit()
         conn.close()
-
         print("✅ Database created successfully.")
 
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
 
     # =========================================
-    #                 IMAGES
+    #                IMAGES
     # =========================================
-    def delete_image(self, rel_path):
-        conn = self._get_conn()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM images WHERE image_path = ?", (rel_path,))
-        conn.commit()
-        conn.close()
-
-    def insert_image(self, filename, rel_path, embedding):
+    def insert_image(self, filename, filepath, embedding):
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO images (filename, image_path, embedding)
+            INSERT OR REPLACE INTO images (filename, filepath, embedding)
             VALUES (?, ?, ?)
-        """, (filename, rel_path, embedding))
+        """, (filename, filepath, embedding))
         conn.commit()
         conn.close()
 
-    # =========================================
-    #                   PDFs
-    # =========================================
-    def delete_pdf(self, rel_path):
+    def delete_image(self, filepath):
         conn = self._get_conn()
         cur = conn.cursor()
-        cur.execute("DELETE FROM pdf_pages WHERE pdf_path = ?", (rel_path,))
+        cur.execute("DELETE FROM images WHERE filepath = ?", (filepath,))
         conn.commit()
         conn.close()
 
-    def insert_pdf_page(self, rel_path, page_number, text, embedding_bytes):
+    def get_all_image_filenames(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT filename FROM images")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+
+    def get_all_image_paths(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT filepath FROM images")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+
+    # =========================================
+    #                  PDFs
+    # =========================================
+    def insert_pdf_page(self, pdf_path, page_number, text_content, embedding_bytes):
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO pdf_pages (pdf_path, page_number, text_content, embedding)
             VALUES (?, ?, ?, ?)
-        """, (rel_path, page_number, text, embedding_bytes))
+        """, (pdf_path, page_number, text_content, embedding_bytes))
         conn.commit()
         conn.close()
+
+    def delete_pdf(self, pdf_path):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM pdf_pages WHERE pdf_path = ?", (pdf_path,))
+        conn.commit()
+        conn.close()
+
+    def get_all_pdf_paths(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT pdf_path FROM pdf_pages")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
 
     # =========================================
     #                  AUDIO
     # =========================================
-    # ------- AUDIO EMBEDDINGS -------
     def insert_audio_embedding(self, audio_path, embedding_bytes):
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO audio_embeddings (audio_path, embedding)
+            INSERT OR REPLACE INTO audio_embeddings (audio_path, embedding)
             VALUES (?, ?)
         """, (audio_path, embedding_bytes))
         conn.commit()
         conn.close()
 
-    # ------- AUDIO EMOTIONS -------
     def insert_audio_emotion(self, audio_path, emotion, emotion_scores_json):
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO audio_emotions (audio_path, emotion, emotion_scores)
+            INSERT OR REPLACE INTO audio_emotions (audio_path, emotion, emotion_scores)
             VALUES (?, ?, ?)
         """, (audio_path, emotion, emotion_scores_json))
         conn.commit()
         conn.close()
 
-    # ------- DELETE AUDIO (ALL TABLES) -------
     def delete_audio(self, audio_path):
         conn = self._get_conn()
         cur = conn.cursor()
-
-        # from embeddings
         cur.execute("DELETE FROM audio_embeddings WHERE audio_path = ?", (audio_path,))
-
-        # from emotions
         cur.execute("DELETE FROM audio_emotions WHERE audio_path = ?", (audio_path,))
-
         conn.commit()
         conn.close()
+
+    def get_all_audio_paths(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT audio_path FROM audio_embeddings")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
