@@ -394,25 +394,10 @@ with tabs[1]:
 # ======================================================
 with tabs[2]:
     st.subheader("⚙️ Application Settings")
-
-    # ------------------------------------------------------
-    # DATASET & EMBEDDINGS CONFIG
-    # ------------------------------------------------------
-    with st.expander("⚙️ Dataset & Embeddings Configuration", expanded=True):
-
-        st.markdown("### 🖼️ Data Processing")
-        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
-
-        with col1:
-            if st.button("📦 Download COCO Dataset", use_container_width=True):
-                with st.spinner("Downloading COCO Dataset..."):
-                    searcher.download_coco_data()
-                st.success("✅ COCO dataset downloaded successfully!")
-
     # ------------------------------------------------------
     # DISPLAY SETTINGS
     # ------------------------------------------------------
-    with st.expander("🔧 Display Settings", expanded=False):
+    with st.expander("🔧 Display Settings", expanded=True):
         top_k = st.slider("Select number of results per search", 3, 30, 5)
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -420,7 +405,7 @@ with tabs[2]:
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
 # ======================================================
-with tabs[2]:
+with tabs[3]:
     st.subheader("💬 Text-to-Image Search")
 
     # state για να κάνουμε trigger το search
@@ -470,7 +455,7 @@ with tabs[2]:
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
 # ======================================================
-with tabs[3]:
+with tabs[4]:
     st.subheader("🖼️ Image-to-Image Search")
     uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png"])
 
@@ -508,7 +493,7 @@ with tabs[3]:
 # ======================================================
 # 💬 TEXT → PDF SEARCH
 # ======================================================
-with tabs[4]:
+with tabs[5]:
     st.subheader("💬 Text-to-PDF Semantic Search")
     query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
 
@@ -551,7 +536,7 @@ with tabs[4]:
 # ======================================================
 # 📚 PDF → PDF SEARCH
 # ======================================================
-with tabs[5]:
+with tabs[6]:
     st.subheader("📚 PDF-to-PDF Similarity Search")
 
     uploaded_pdf = st.file_uploader("📤 Upload a PDF to compare", type=["pdf"])
@@ -610,7 +595,7 @@ with tabs[5]:
 # ======================================================
 # 🎧 AUDIO SEARCH (PLACEHOLDER)
 # ======================================================
-with tabs[6]:
+with tabs[7]:
     st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion + Language Filter)")
 
     with st.container():
