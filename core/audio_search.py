@@ -140,19 +140,19 @@ class AudioSearcher:
             device=self.device
         )
 
-        print("[INFO] Loading M-CLIP")
+        print("[INFO] Loading M-CLIP (CPU first, safe)")
 
+        # ⚠️ ΠΑΝΤΑ CPU ΣΤΗ ΦΟΡΤΩΣΗ
         self.mclip = SentenceTransformer(
             self.mclip_model_path,
-            device=self.device,
-            model_kwargs={
-                "device_map": None,
-                "low_cpu_mem_usage": False,
-                "torch_dtype": torch.float32
-            }
+            device="cpu"
         )
 
-        print("[INFO] Models loaded\n")
+        # 🔥 ΜΕΤΑ μετακίνηση αν υπάρχει GPU
+        if self.device == "cuda":
+            self.mclip = self.mclip.to("cuda")
+
+        print("[INFO] Models loaded safely\n")
 
     # ============================
     # EMOTION CACHE
