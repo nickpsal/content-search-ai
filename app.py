@@ -531,7 +531,11 @@ with tabs[4]:
 # ======================================================
 with tabs[5]:
     st.subheader("💬 Text-to-PDF Semantic Search")
-    query_text = st.text_area("✍️ Enter your search text:", placeholder="e.g. deep learning in medical imaging")
+
+    query_text = st.text_area(
+        "✍️ Enter your search text:",
+        placeholder="e.g. deep learning in medical imaging"
+    )
 
     if st.button("🔍 Run Text → PDF Search"):
         if not query_text.strip():
@@ -542,20 +546,35 @@ with tabs[5]:
             searcher = PDFSearcher(db_path="content_search_ai.db")
 
             with st.spinner("Processing and comparing PDFs..."):
-                results = searcher.search_by_text(query_text=query_text, top_k=top_k)
+                results = searcher.search_by_text(
+                    query_text=query_text,
+                    top_k=top_k
+                )
 
             if not results:
                 st.warning("❌ No matching PDFs found.")
             else:
-                st.success(f"✅ Found {len(results)} relevant PDFs!")
+                st.success(f"✅ Found {len(results)} relevant PDF pages!")
 
                 for r in results:
                     filename = os.path.basename(r["pdf"])
 
                     st.markdown(
-                        f"### 📄 {filename} (Page {r['page']}) — Score: `{r['score']:.4f}`"
+                        f"""
+                        ### 📄 {filename} — Page {r['page']}
+                        **Similarity:** `{r['score'] * 100:.2f}%`  
+                        **Confidence:** `{r['confidence'] * 100:.1f}%`  
+                        **Reason:** semantic text embedding similarity
+                        """
                     )
-                    st.caption(f"**Snippet:** {r['snippet']}")
+
+                    # -------- EXPLAINABILITY (PARAGRAPH) --------
+                    if r.get("matched_paragraph"):
+                        st.markdown("**Matched paragraph:**")
+                        st.info(r["matched_paragraph"])
+                    else:
+                        st.caption("No paragraph-level match available.")
+                    # -------------------------------------------
 
                     with open(r["pdf"], "rb") as f:
                         pdf_data = f.read()
@@ -567,6 +586,7 @@ with tabs[5]:
                         mime="application/pdf",
                         key=f"download_{filename}_{r['page']}"
                     )
+
                     st.markdown("---")
 
 # ======================================================

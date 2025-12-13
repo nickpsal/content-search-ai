@@ -5,13 +5,22 @@ import re
 import fitz
 from sentence_transformers import SentenceTransformer
 
+def split_into_paragraphs(text, min_len=80):
+    raw = re.split(r"\n\s*\n", text)
+    paragraphs = [p.strip() for p in raw if len(p.strip()) >= min_len]
+    return paragraphs
 
 class PDFSearcher:
     """
-    PDF Searcher — SQLite Powered
+    PDF Searcher — Pure Semantic Retrieval
+    Page-level embeddings with adaptive thresholding.
     """
 
-    def __init__(self, db_path="content_search_ai.db", model_path="./models/mclip_finetuned_coco_ready"):
+    def __init__(
+        self,
+        db_path="content_search_ai.db",
+        model_path="./models/mclip_finetuned_coco_ready"
+    ):
         self.db_path = db_path
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -27,12 +36,12 @@ class PDFSearcher:
             }
         )
 
-        self.min_score = 0.90
+        # used only during indexing
         self.min_chars = 50
 
-    # =======================================
-    # LOAD ALL EMBEDDINGS FROM SQLITE
-    # =======================================
+    # ==================================================
+    # LOAD PDF PAGE EMBEDDINGS FROM SQLITE
+    # ==================================================
     def _load_pdf_embeddings(self):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -43,21 +52,21 @@ class PDFSearcher:
         rows = cursor.fetchall()
         conn.close()
 
-        pdf_pages = []
+        pages = []
         for pdf_path, page_number, text_content, blob in rows:
             vec = np.frombuffer(blob, dtype=np.float32)
-            pdf_pages.append({
+            pages.append({
                 "pdf_path": pdf_path,
                 "page": page_number,
                 "text": text_content,
                 "vector": vec
             })
 
-        return pdf_pages
+        return pages
 
-    # =======================================
-    # EXTRACT EMBEDDINGS FOR PDF -> DB
-    # =======================================
+    # ==================================================
+    # EXTRACT EMBEDDINGS FOR PDF (INDEXING ONLY)
+    # ==================================================
     def get_pdf_pages_embeddings(self, pdf_path):
         pages = []
         valid_pages = 0
@@ -98,13 +107,12 @@ class PDFSearcher:
 
         return pages
 
-    # =======================================
-    # TEXT -> PDF SEARCH
-    # =======================================
+    # ==================================================
+    # TEXT → PDF SEARCH (PURE RETRIEVAL)
+    # ==================================================
     def search_by_text(self, query_text, top_k=5):
         pdf_pages = self._load_pdf_embeddings()
         if not pdf_pages:
-            print("[WARN] No PDF embeddings found.")
             return []
 
         query_vec = self.model.encode(
@@ -113,18 +121,54 @@ class PDFSearcher:
             normalize_embeddings=True
         ).astype(np.float32)
 
-        results = []
-        for page in pdf_pages:
-            v = page["vector"]
-            sim = float(np.dot(query_vec, v))
+        # --- similarity distribution ---
+        sims = np.array([
+            float(np.dot(query_vec, page["vector"]))
+            for page in pdf_pages
+        ])
 
-            if sim >= self.min_score:
-                results.append({
-                    "pdf": page["pdf_path"],
-                    "score": sim,
-                    "page": page["page"],
-                    "snippet": page["text"][:300].replace("\n", " ") + "..."
-                })
+        mean, std = sims.mean(), sims.std()
+        MIN_SIM = mean + 0.3 * std  # ✅ adaptive
+
+        results = []
+
+        for page, sim in zip(pdf_pages, sims):
+            if sim < MIN_SIM:
+                continue
+
+            # -------- paragraph explainability --------
+            paragraphs = split_into_paragraphs(page["text"])
+            best_para = None
+            best_para_score = None
+
+            if paragraphs:
+                para_embs = self.model.encode(
+                    paragraphs,
+                    convert_to_numpy=True,
+                    normalize_embeddings=True
+                )
+                para_sims = para_embs @ query_vec
+                idx = int(np.argmax(para_sims))
+
+                if para_sims[idx] >= MIN_SIM:
+                    best_para = paragraphs[idx]
+                    best_para_score = float(para_sims[idx])
+
+            # ------------------------------------------
+
+            confidence = (sim - MIN_SIM) / (1 - MIN_SIM)
+            confidence = float(np.clip(confidence, 0.0, 1.0))
+
+            results.append({
+                "pdf": page["pdf_path"],
+                "page": page["page"],
+                "score": sim,
+                "confidence": confidence,
+                "matched_paragraph": best_para,
+                "paragraph_score": best_para_score
+            })
 
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
+
+
