@@ -6,9 +6,14 @@ import fitz
 from sentence_transformers import SentenceTransformer
 
 def split_into_paragraphs(text, min_len=80):
+    import re
     raw = re.split(r"\n\s*\n", text)
-    paragraphs = [p.strip() for p in raw if len(p.strip()) >= min_len]
-    return paragraphs
+    return [p.strip() for p in raw if len(p.strip()) >= min_len]
+
+
+def aggregate_embeddings(vectors, mode="mean"):
+    v = np.mean(vectors, axis=0)
+    return v / (np.linalg.norm(v) + 1e-8)
 
 class PDFSearcher:
     """
@@ -106,6 +111,97 @@ class PDFSearcher:
             print(f"[WARN] Error processing {pdf_path}: {e}")
 
         return pages
+
+    # ==================================================
+    # PDF → PDF SEARCH (PURE RETRIEVAL)
+    # ==================================================
+    def search_similar_pdfs(self, query_pdf_path, top_k=5, top_docs=10):
+        # --------------------------------------------------
+        # 1️⃣ Build QUERY PDF embedding (document-level)
+        # --------------------------------------------------
+        query_pages = self.get_pdf_pages_embeddings(query_pdf_path)
+        if not query_pages:
+            return []
+
+        query_page_vecs = [p[1] for p in query_pages]
+        query_doc_vec = aggregate_embeddings(query_page_vecs)
+
+        # --------------------------------------------------
+        # 2️⃣ Load STORED PDF pages
+        # --------------------------------------------------
+        stored_pages = self._load_pdf_embeddings()
+        if not stored_pages:
+            return []
+
+        # group pages by pdf
+        pdf_groups = {}
+        for p in stored_pages:
+            pdf_groups.setdefault(p["pdf_path"], []).append(p)
+
+        # --------------------------------------------------
+        # 3️⃣ Pass 1 — Document-level similarity
+        # --------------------------------------------------
+        doc_scores = []
+        for pdf_path, pages in pdf_groups.items():
+            page_vecs = [pg["vector"] for pg in pages]
+            doc_vec = aggregate_embeddings(page_vecs)
+
+            sim = float(np.dot(query_doc_vec, doc_vec))
+            doc_scores.append((pdf_path, sim))
+
+        sims = np.array([s for _, s in doc_scores])
+        mean, std = sims.mean(), sims.std()
+        MIN_SIM = mean + 0.3 * std
+
+        top_docs_ranked = sorted(
+            [(p, s) for p, s in doc_scores if s >= MIN_SIM],
+            key=lambda x: x[1],
+            reverse=True
+        )[:top_docs]
+
+        # --------------------------------------------------
+        # 4️⃣ Pass 2 — Page & paragraph explainability
+        # --------------------------------------------------
+        results = []
+
+        for pdf_path, doc_sim in top_docs_ranked:
+            pages = pdf_groups[pdf_path]
+
+            for page in pages:
+                page_sim = float(np.dot(query_doc_vec, page["vector"]))
+                if page_sim < MIN_SIM:
+                    continue
+
+                # paragraph explainability
+                paragraphs = split_into_paragraphs(page["text"])
+                best_para, best_para_score = None, None
+
+                if paragraphs:
+                    para_embs = self.model.encode(
+                        paragraphs,
+                        convert_to_numpy=True,
+                        normalize_embeddings=True
+                    )
+                    para_sims = para_embs @ query_doc_vec
+                    idx = int(np.argmax(para_sims))
+
+                    best_para = paragraphs[idx]
+                    best_para_score = float(para_sims[idx])
+
+                confidence = (doc_sim - mean) / (std + 1e-6)
+                confidence = float(np.clip(confidence, 0.0, 1.0))
+
+                results.append({
+                    "pdf": pdf_path,
+                    "page": page["page"],
+                    "score": doc_sim,
+                    "confidence": confidence,
+                    "matched_paragraph": best_para,
+                    "paragraph_score": best_para_score
+                })
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:top_k]
 
     # ==================================================
     # TEXT → PDF SEARCH (PURE RETRIEVAL)

@@ -627,14 +627,30 @@ with tabs[6]:
 
             for r in results:
                 filename = os.path.basename(r["pdf"])
-                color = "🟢" if r["score"] >= 0.98 else "🟠" if r["score"] >= 0.95 else "🔴"
+
+                color = (
+                    "🟢" if r["score"] >= 0.98
+                    else "🟠" if r["score"] >= 0.95
+                    else "🔴"
+                )
 
                 st.markdown(
-                    f"### {color} {filename} — Page {r['page']} — Score: `{r['score']:.4f}`"
+                    f"""
+                    ### {color} {filename} — Page {r['page']}
+                    **Similarity:** `{r['score'] * 100:.2f}%`  
+                    **Confidence:** `{r['confidence'] * 100:.1f}%`  
+                    **Reason:** document-level semantic similarity
+                    """
                 )
-                st.caption(f"**Snippet:** {r['snippet']}")
 
-                # Load PDF file bytes for download
+                # -------- PARAGRAPH EXPLAINABILITY --------
+                if r.get("matched_paragraph"):
+                    st.markdown("**Matched paragraph:**")
+                    st.info(r["matched_paragraph"])
+                else:
+                    st.caption("No paragraph-level match available.")
+                # -----------------------------------------
+
                 with open(r["pdf"], "rb") as f:
                     pdf_data = f.read()
 
