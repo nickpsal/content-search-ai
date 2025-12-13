@@ -47,7 +47,7 @@ class AudioOtherHandler(FileSystemEventHandler):
         # -------------------------
         # Paths
         # -------------------------
-        self.audio_dir = self.base_dir / "data/audio/audio_other"
+        self.audio_dir = self.base_dir / "data/audio"
         self.watch_dir = str(self.audio_dir)
 
         # -------------------------

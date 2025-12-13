@@ -104,7 +104,7 @@ def sync_pdfs():
 def sync_audio():
     print("🟥 Syncing audio...")
 
-    audio_dir = BASE_DIR / "data/audio/audio_other"
+    audio_dir = BASE_DIR / "data/audio"
     fs_files = {f for f in os.listdir(audio_dir) if f.lower().endswith(".wav")}
     db_files = set(db.get_all_audio_paths())
     db_files = {Path(p).name for p in db_files}
@@ -119,7 +119,7 @@ def sync_audio():
 
     for filename in to_insert:
         full_path = audio_dir / filename
-        rel_path = f"data/audio/audio_other/{filename}"
+        rel_path = f"data/audio/{filename}"
 
         try:
             segments, _ = whisper.transcribe(str(full_path), beam_size=1)
@@ -137,7 +137,7 @@ def sync_audio():
             print(f"   ❌ Error audio: {e}")
 
     for filename in to_delete:
-        rel_path = f"data/audio/audio_other/{filename}"
+        rel_path = f"data/audio/{filename}"
         db.delete_audio(rel_path)
         print(f"   ➖ Removed missing audio: {filename}")
 
