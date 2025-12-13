@@ -26,7 +26,7 @@ class Model:
         # Αν ο φάκελος έχει ήδη αρχεία → δεν ξανακατεβάζουμε
         existing = os.listdir(self.model_dir)
         if len(existing) > 0:
-            print(f"✅ Model files already exist in {self.model_dir}")
+            print(f"[OK] Model files already exist in {self.model_dir}")
             return
 
         # Loop για όλα τα ZIPs

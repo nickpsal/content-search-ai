@@ -28,7 +28,7 @@ def sync_images():
     preprocess = searcher.preprocess
     device = searcher.device
 
-    images_dir = BASE_DIR / "data/images/other"
+    images_dir = BASE_DIR / "data/images"
     fs_files = {f for f in os.listdir(images_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))}
 
     db_files = set(db.get_all_image_filenames())
@@ -40,7 +40,7 @@ def sync_images():
 
     for filename in to_insert:
         full_path = images_dir / filename
-        rel_path = f"data/images/other/{filename}"
+        rel_path = f"data/images/{filename}"
 
         try:
             img = Image.open(full_path).convert("RGB")
@@ -57,7 +57,7 @@ def sync_images():
             print(f"   ❌ Error: {e}")
 
     for filename in to_delete:
-        rel_path = f"data/images/other/{filename}"
+        rel_path = f"data/images/{filename}"
         db.delete_image(rel_path)
         print(f"   ➖ Removed missing image: {filename}")
 

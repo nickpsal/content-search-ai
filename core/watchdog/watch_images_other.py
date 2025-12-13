@@ -19,17 +19,16 @@ from core.db.database_helper import DatabaseHelper
 def make_relative(full_path: str) -> str:
     """
     Μετατρέπει absolute path σε:
-    data/images/other/filename.jpg
+    data/images/filename.jpg
     """
     full_path = full_path.replace("\\", "/")
 
-    if "/data/" in full_path:
-        rel = full_path.split("/data/")[1]
-        return f"data/{rel}"
+    if "/data/images/" in full_path:
+        rel = full_path.split("/data/images/")[1]
+        return f"data/images/{rel}"
 
     print("❌ Could not compute relative path for:", full_path)
     return None
-
 
 # ============================================
 # 📌 Watchdog Handler
@@ -58,7 +57,7 @@ class ImageFolderHandler(FileSystemEventHandler):
         self.preprocess = self.searcher.preprocess
         self.device = self.searcher.device
 
-        self.watch_dir = str(self.base_dir / "data/images/other")
+        self.watch_dir = str(self.base_dir / "data/images")
 
     # --------------------------------------------
     # 🗑️ FILE DELETED

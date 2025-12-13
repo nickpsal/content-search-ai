@@ -7,6 +7,50 @@ from PIL import Image
 from sentence_transformers import SentenceTransformer
 import time
 
+def normalize_text_image_query(query: str, lang: str) -> str:
+    query = query.strip().lower()
+
+    if lang == "el":
+        # βασικά mappings – όχι AI, deterministic
+        mappings = {
+            "άντρας": "man",
+            "γυναίκα": "woman",
+            "μηχανή": "motorcycle",
+            "μοτοσυκλέτα": "motorcycle",
+            "καβαλάει": "riding",
+            "οδηγεί": "riding",
+            "πάνω σε": "on",
+        }
+
+        for gr, en in mappings.items():
+            query = query.replace(gr, en)
+
+    # CLIP-style caption
+    return f"a photo of {query}"
+
+def build_prompt_variants(normalized_query: str):
+    variants = [normalized_query]
+
+    # βασικό
+
+    # person instead of man/woman
+    if "man" in normalized_query:
+        variants.append(normalized_query.replace("man", "person"))
+    if "woman" in normalized_query:
+        variants.append(normalized_query.replace("woman", "person"))
+
+    # riding → on
+    if "riding" in normalized_query:
+        variants.append(normalized_query.replace("riding", "on"))
+
+    # safety: unique only
+    return list(dict.fromkeys(variants))
+
+def detect_language(text: str):
+    for ch in text:
+        if 'α' <= ch <= 'ω' or 'Α' <= ch <= 'Ω':
+            return "el"
+    return "en"
 
 class ImageSearcher:
     """
@@ -40,7 +84,7 @@ class ImageSearcher:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT filename, image_path, embedding FROM images")
+        cursor.execute("SELECT filename, filepath, embedding FROM images")
         rows = cursor.fetchall()
         conn.close()
 
@@ -65,20 +109,36 @@ class ImageSearcher:
             raise Exception("❌ No embeddings found in SQLite!")
 
         # Encode text query with M-CLIP
-        query_emb = self.text_model.encode(
-            query, convert_to_numpy=True, normalize_embeddings=True
+        lang = detect_language(query)
+        normalized_query = normalize_text_image_query(query, lang)
+
+        print(f"[DEBUG] Normalized query: {normalized_query}")
+
+        variants = build_prompt_variants(normalized_query)
+
+        query_embs = self.text_model.encode(
+            variants,
+            convert_to_numpy=True,
+            normalize_embeddings=True
         ).astype(np.float32)
 
         results = []
         start = time.time()
 
+        MIN_SIM = 0.24
         for filename, item in embeddings.items():
             img_vec = item["vector"]
 
             # Cosine similarity
-            sim = np.dot(query_emb, img_vec) / (
-                np.linalg.norm(query_emb) * np.linalg.norm(img_vec)
-            )
+            sims = [
+                float(np.dot(q_emb, img_vec))
+                for q_emb in query_embs
+            ]
+
+            sim = max(sims)
+
+            if sim < MIN_SIM:
+                continue
 
             results.append({
                 "filename": filename,
@@ -86,9 +146,12 @@ class ImageSearcher:
                 "path": item["path"]
             })
 
+        if not results:
+            return []
+
         results.sort(key=lambda x: x["score"], reverse=True)
 
-        print(f"⏱️ Text → Image search completed in {time.time() - start:.2f}s")
+        print(f"[INFO] Text -> Image search completed in {time.time() - start:.2f}s")
         return results[:top_k]
 
     # -------------------------------------------------------------

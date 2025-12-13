@@ -15,11 +15,20 @@ class PDFSearcher:
         self.db_path = db_path
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        print(f"🧠 Loading M-CLIP model from {model_path} on {self.device}")
-        self.model = SentenceTransformer(model_path, device=self.device)
+        print(f"[INFO] Loading M-CLIP model from {model_path} on {self.device}")
+
+        self.model = SentenceTransformer(
+            model_path,
+            device=self.device,
+            model_kwargs={
+                "device_map": None,
+                "low_cpu_mem_usage": False,
+                "torch_dtype": torch.float32
+            }
+        )
 
         self.min_score = 0.90
-        self.min_chars = 50   # 🔥 ΑΠΑΡΑΙΤΗΤΟ
+        self.min_chars = 50
 
     # =======================================
     # LOAD ALL EMBEDDINGS FROM SQLITE
@@ -28,7 +37,9 @@ class PDFSearcher:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("SELECT pdf_path, page_number, text_content, embedding FROM pdf_pages")
+        cursor.execute(
+            "SELECT pdf_path, page_number, text_content, embedding FROM pdf_pages"
+        )
         rows = cursor.fetchall()
         conn.close()
 
@@ -45,7 +56,7 @@ class PDFSearcher:
         return pdf_pages
 
     # =======================================
-    # EXTRACT EMBEDDINGS FOR PDF → DB
+    # EXTRACT EMBEDDINGS FOR PDF -> DB
     # =======================================
     def get_pdf_pages_embeddings(self, pdf_path):
         pages = []
@@ -53,8 +64,6 @@ class PDFSearcher:
 
         try:
             with fitz.open(pdf_path) as doc:
-                total_pages = len(doc)
-
                 for i, page in enumerate(doc):
                     text = page.get_text("text").strip()
                     if not text or len(text) < self.min_chars:
@@ -81,21 +90,21 @@ class PDFSearcher:
                     pages.append((i + 1, emb, text))
 
                 if valid_pages < 1:
-                    print("🚫 Low text density, skipping.")
+                    print("[INFO] Low text density, skipping PDF.")
                     return []
 
         except Exception as e:
-            print(f"⚠️ Error processing {pdf_path}: {e}")
+            print(f"[WARN] Error processing {pdf_path}: {e}")
 
         return pages
 
     # =======================================
-    # TEXT → PDF SEARCH
+    # TEXT -> PDF SEARCH
     # =======================================
     def search_by_text(self, query_text, top_k=5):
         pdf_pages = self._load_pdf_embeddings()
         if not pdf_pages:
-            print("❌ No PDF embeddings found.")
+            print("[WARN] No PDF embeddings found.")
             return []
 
         query_vec = self.model.encode(
@@ -107,13 +116,12 @@ class PDFSearcher:
         results = []
         for page in pdf_pages:
             v = page["vector"]
-
-            sim = np.dot(query_vec, v) / (np.linalg.norm(query_vec) * np.linalg.norm(v))
+            sim = float(np.dot(query_vec, v))
 
             if sim >= self.min_score:
                 results.append({
                     "pdf": page["pdf_path"],
-                    "score": float(sim),
+                    "score": sim,
                     "page": page["page"],
                     "snippet": page["text"][:300].replace("\n", " ") + "..."
                 })
