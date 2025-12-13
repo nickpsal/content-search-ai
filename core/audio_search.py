@@ -1,240 +1,157 @@
-#!/usr/bin/env python3
-"""
-AudioSearcher v2 – MCLIP Semantic Search + Emotion
--------------------------------------------------
-Features:
-- Faster-Whisper (CPU) για transcription
-- M-CLIP για semantic search στα transcripts
-- Emotion Model V5 για emotion detection
-"""
-
-import torch
+import sqlite3
+import json
 import numpy as np
-import pandas as pd
-from pathlib import Path
-from tqdm import tqdm
-from faster_whisper import WhisperModel as FasterWhisper
+import torch
 from sentence_transformers import SentenceTransformer
 
-from .emotion_model_v5 import EmotionModelV5
 
-
-# ============================
-# SAFE CSV LOADER
-# ============================
-def _safe_load_csv(path: Path):
-    if not path.exists():
-        return None
-
-    if path.stat().st_size == 0:
-        print(f"[WARN] Empty transcript file -> {path}, rebuilding")
-        return None
-
-    try:
-        df = pd.read_csv(path)
-        if df.empty:
-            print(f"[WARN] Transcript file empty -> {path}, rebuilding")
-            return None
-        return df
-    except Exception as e:
-        print(f"[WARN] Failed to load {path}: {e}, rebuilding")
-        return None
-
-
-# ============================
-# LANGUAGE DETECTION
-# ============================
-def detect_language(text: str):
+# ==================================================
+# Utils
+# ==================================================
+def detect_language(text: str) -> str:
     for ch in text:
         if 'α' <= ch <= 'ω' or 'Α' <= ch <= 'Ω':
             return "el"
     return "en"
 
 
-def _normalize_emotion_query(emotion_query: str) -> str:
-    q = emotion_query.lower().strip()
-
+def normalize_emotion_query(q: str) -> str:
+    q = q.lower().strip()
     mapping = {
-        "happy": "happy", "joy": "happy", "laugh": "happy",
-        "χαρούμενος": "happy", "χαρά": "happy",
-
-        "sad": "sad", "upset": "sad",
-        "λυπημένος": "sad", "στεναχωρημένος": "sad",
-
-        "angry": "angry", "mad": "angry",
-        "θυμωμένος": "angry", "θυμός": "angry",
-
-        "fearful": "fearful", "scared": "fearful",
-        "φοβισμένος": "fearful", "φόβος": "fearful",
-
-        "disgust": "disgust", "disgusted": "disgust",
-        "αηδιασμένος": "disgust", "αηδία": "disgust",
-
-        "neutral": "neutral", "calm": "neutral",
-        "ουδέτερος": "neutral",
+        "happy": "happy", "joy": "happy", "χαρά": "happy",
+        "sad": "sad", "λυπημένος": "sad",
+        "angry": "angry", "θυμός": "angry",
+        "fear": "fearful", "φόβος": "fearful",
+        "disgust": "disgust", "αηδία": "disgust",
+        "neutral": "neutral", "ουδέτερος": "neutral",
     }
-
     return mapping.get(q, q)
 
 
-# ============================
-# AUDIO SEARCHER
-# ============================
+# ==================================================
+# AudioSearcher
+# ==================================================
 class AudioSearcher:
+    """
+    DB-first Audio Searcher
+    - Semantic retrieval via M-CLIP (text -> audio transcript embeddings)
+    - Emotion metadata for filtering & explainability
+    """
+
     def __init__(
         self,
-        audio_main="data/audio/AudioWAV",
-        audio_other="data/audio/audio_other",
-        emotion_model_path="models/best_model_audio_emotion_v5.pt",
-        transcripts_main="data/transcripts/transcripts_main.csv",
-        transcripts_other="data/transcripts/transcripts_other.csv",
-        mclip_model_path="models/mclip_finetuned_coco_ready",
-        device=None,
+        db_path: str = "content_search_ai.db",
+        mclip_model_path: str = "models/mclip_finetuned_coco_ready",
     ):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.db_path = db_path
 
-        self.audio_main = Path(audio_main)
-        self.audio_other = Path(audio_other)
-        self.emotion_model_path = Path(emotion_model_path)
-        self.transcripts_main_path = Path(transcripts_main)
-        self.transcripts_other_path = Path(transcripts_other)
-        self.mclip_model_path = mclip_model_path
-
-        self.emotion_cache_path = Path("data/emotions/emotion_cache.csv")
-        self.emotion_cache = self._load_emotion_cache()
-
-        self.transcripts_main_path.parent.mkdir(parents=True, exist_ok=True)
-        self.transcripts_other_path.parent.mkdir(parents=True, exist_ok=True)
-
-        self.emb_dir = Path("data/transcripts/embeds")
-        self.emb_dir.mkdir(parents=True, exist_ok=True)
-
-        print("=======================================")
-        print(f"[INFO] Device           : {self.device}")
-        print(f"[INFO] Audio MAIN       : {self.audio_main}")
-        print(f"[INFO] Audio OTHER      : {self.audio_other}")
-        print(f"[INFO] Emotion model    : {self.emotion_model_path}")
-        print(f"[INFO] M-CLIP model     : {self.mclip_model_path}")
-        print("=======================================\n")
-
-        self._load_models()
-
-        self.transcripts = None
-        self.transcripts_main = None
-        self.transcripts_other = None
-
-    # ============================
-    # LOAD MODELS
-    # ============================
-    def _load_models(self):
-        print("[INFO] Loading Faster-Whisper (CPU)")
-        self.fw = FasterWhisper(
-            "small",
-            device="cpu",
-            compute_type="int8"
-        )
-
-        print("[INFO] Loading Emotion Model V5")
-        self.emotion_model = EmotionModelV5(
-            self.emotion_model_path,
-            device=self.device
-        )
-
-        print("[INFO] Loading M-CLIP (CPU first, safe)")
-
-        # ⚠️ ΠΑΝΤΑ CPU ΣΤΗ ΦΟΡΤΩΣΗ
+        # M-CLIP ALWAYS CPU (safe loading)
         self.mclip = SentenceTransformer(
-            self.mclip_model_path,
+            mclip_model_path,
             device="cpu"
         )
 
-        # 🔥 ΜΕΤΑ μετακίνηση αν υπάρχει GPU
-        if self.device == "cuda":
-            self.mclip = self.mclip.to("cuda")
+    # ==================================================
+    # LOAD AUDIO DATA FROM DB
+    # ==================================================
+    def _load_audio_rows(self):
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.cursor()
 
-        print("[INFO] Models loaded safely\n")
+        cur.execute("""
+            SELECT
+                a.audio_path,
+                a.embedding,
+                em.emotion,
+                em.emotion_probs
+            FROM audio_embeddings a
+            LEFT JOIN audio_emotions em
+                ON a.audio_path = em.audio_path
+        """)
 
-    # ============================
-    # EMOTION CACHE
-    # ============================
-    def _load_emotion_cache(self):
-        if not self.emotion_cache_path.exists():
-            return {}
+        rows = cur.fetchall()
+        conn.close()
 
-        df = pd.read_csv(self.emotion_cache_path)
-        cache = {}
+        results = []
 
-        for _, row in df.iterrows():
-            cache[row["filename"]] = {
-                "emotion": row["emotion"],
-                "emotion_probs": {
-                    "angry": row["angry"],
-                    "disgust": row["disgust"],
-                    "fearful": row["fearful"],
-                    "happy": row["happy"],
-                    "neutral": row["neutral"],
-                    "sad": row["sad"],
-                }
-            }
-        return cache
+        for audio_path, emb_blob, emotion, emotion_probs_json in rows:
+            if emb_blob is None:
+                continue
 
-    def save_emotion_cache(self):
-        self.emotion_cache_path.parent.mkdir(parents=True, exist_ok=True)
+            vec = np.frombuffer(emb_blob, dtype=np.float32)
 
-        rows = []
-        for fname, data in self.emotion_cache.items():
-            probs = data["emotion_probs"]
-            rows.append({
-                "filename": fname,
-                "emotion": data["emotion"],
-                **probs
+            emotion_probs = None
+            if emotion_probs_json:
+                try:
+                    emotion_probs = json.loads(emotion_probs_json)
+                except Exception:
+                    emotion_probs = None
+
+            results.append({
+                "audio_path": audio_path,
+                "vector": vec,
+                "emotion": emotion,
+                "emotion_probs": emotion_probs
             })
 
-        pd.DataFrame(rows).to_csv(self.emotion_cache_path, index=False)
+        return results
 
-    # ============================
-    # TRANSCRIBE
-    # ============================
-    def transcribe_audio(self, path: Path) -> str:
-        segs, _ = self.fw.transcribe(str(path), beam_size=1)
-        return " ".join([s.text for s in segs]).strip()
+    # ==================================================
+    # SEMANTIC SEARCH
+    # ==================================================
+    def search_semantic(self, query: str, top_k: int = 5):
+        rows = self._load_audio_rows()
+        if not rows:
+            return []
 
-    # ============================
-    # BUILD TRANSCRIPTS + EMBEDS
-    # ============================
-    def build_all_transcripts(self):
-        df_other = _safe_load_csv(self.transcripts_other_path)
-        if df_other is None:
-            rows = []
-            for w in tqdm(self.audio_other.glob("*.wav"), desc="Transcribing OTHER"):
-                rows.append({
-                    "filename": w.name,
-                    "folder": "other",
-                    "transcript": self.transcribe_audio(w)
-                })
-            df_other = pd.DataFrame(rows)
-            df_other.to_csv(self.transcripts_other_path, index=False)
+        # Encode query (normalized)
+        qvec = self.mclip.encode(
+            query,
+            normalize_embeddings=True
+        ).astype(np.float32)
 
-        df_main = _safe_load_csv(self.transcripts_main_path)
-        if df_main is None:
-            rows = []
-            for w in tqdm(self.audio_main.glob("*.wav"), desc="Transcribing MAIN"):
-                rows.append({
-                    "filename": w.name,
-                    "folder": "main",
-                    "transcript": self.transcribe_audio(w)
-                })
-            df_main = pd.DataFrame(rows)
-            df_main.to_csv(self.transcripts_main_path, index=False)
+        # Cosine similarity (dot since normalized)
+        sims = np.array([
+            float(np.dot(qvec, r["vector"]))
+            for r in rows
+        ], dtype=np.float32)
 
-        self.transcripts = pd.concat([df_other, df_main], ignore_index=True)
+        mean = float(sims.mean())
+        std = float(sims.std())
 
-        print("[INFO] Building MCLIP embeddings")
-        for _, row in tqdm(self.transcripts.iterrows(), total=len(self.transcripts)):
-            emb_path = self.emb_dir / f"{row['filename']}.npy"
-            if not emb_path.exists():
-                emb = self.mclip.encode(row["transcript"], normalize_embeddings=True)
-                np.save(emb_path, emb)
+        # Safe adaptive threshold
+        MIN_SIM = mean if std == 0 else mean + 0.3 * std
 
-        print("[INFO] Transcripts and embeddings ready\n")
-        return self.transcripts
+        results = []
+        for r, sim in zip(rows, sims):
+            if sim < MIN_SIM:
+                continue
+
+            results.append({
+                "audio_path": r["audio_path"],
+                "similarity": float(sim),
+                "emotion": r["emotion"],
+                "emotion_probs": r["emotion_probs"],
+                "language": detect_language(query)
+            })
+
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return results[:top_k]
+
+    # ==================================================
+    # EMOTION SEARCH
+    # ==================================================
+    def search_by_emotion(self, emotion_query: str, top_k: int = 5):
+        emotion = normalize_emotion_query(emotion_query)
+
+        rows = self._load_audio_rows()
+        matches = [
+            r for r in rows
+            if r["emotion"] == emotion
+        ]
+
+        return [{
+            "audio_path": r["audio_path"],
+            "emotion": r["emotion"],
+            "emotion_probs": r["emotion_probs"]
+        } for r in matches[:top_k]]

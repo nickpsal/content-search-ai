@@ -665,26 +665,18 @@ with tabs[6]:
                 st.markdown("---")
 
 # ======================================================
-# 🎧 AUDIO SEARCH (PLACEHOLDER)
+# 🎧 AUDIO SEARCH
 # ======================================================
 with tabs[7]:
-    st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion + Language Filter)")
+    st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion)")
 
-    with st.container():
-        st.markdown("""
-        #### 🎨 Color Guide
-        - 🟧 **Orange:** Exact location where your query was detected in the audio  
-        - 🎭 **Emotion background (soft color):** Detected overall emotion of the audio  
-            - 😡 **Red** → Angry  
-            - 🤢 **Purple (Dark)** → Disgust  
-            - 😱 **Purple (Light)** → Fearful  
-            - 😊 **Green** → Happy  
-            - 😐 **Gray** → Neutral  
-            - 😢 **Blue** → Sad  
-        """)
+    st.markdown("""
+    #### 🎨 Color Guide
+    - 🎭 Emotion color shows detected dominant emotion
+    """)
 
     # -------------------------------
-    # STATE για trigger από Enter
+    # STATE
     # -------------------------------
     if "run_audio_search" not in st.session_state:
         st.session_state.run_audio_search = False
@@ -693,36 +685,38 @@ with tabs[7]:
         st.session_state.run_audio_search = True
 
     # -------------------------------
-    # TEXT INPUT (ENTER triggers search)
+    # INPUT
     # -------------------------------
     query = st.text_input(
-        "🔎 Enter your audio search phrase",
-        value="",
+        "🔎 Enter search text or emotion (e.g. happy, θυμός)",
         on_change=trigger_audio_search
     )
 
-    # -------------------------------
-    # BUTTON (also triggers search)
-    # -------------------------------
     run_btn = st.button("Run Audio Search", use_container_width=True)
     if run_btn:
         st.session_state.run_audio_search = True
 
     # -------------------------------
-    # RUN SEARCH (button or Enter)
+    # SEARCH
     # -------------------------------
     if st.session_state.run_audio_search:
 
         if not query.strip():
-            st.warning("⚠️ Please enter a phrase.")
+            st.warning("⚠️ Please enter a query.")
         else:
             with st.spinner("Searching audio…"):
-                query_type = audio.classify_query_type(query)
 
-                if query_type == "emotion":
+                # emotion-only shortcut
+                emotion_keywords = {
+                    "happy", "sad", "angry", "fearful",
+                    "disgust", "neutral",
+                    "χαρά", "λύπη", "θυμός", "φόβος", "αηδία"
+                }
+
+                if query.lower().strip() in emotion_keywords:
                     results = audio.search_by_emotion(query, top_k=top_k)
                 else:
-                    results = audio.search_semantic_emotion(query, top_k=top_k)
+                    results = audio.search_semantic(query, top_k=top_k)
 
         if not results:
             st.error("❌ No matching audio found.")
@@ -730,48 +724,29 @@ with tabs[7]:
             st.success(f"✅ Found {len(results)} audio matches!")
 
             for r in results:
-                fname = r["filename"]
-                folder = r["folder"]
-                semantic = r["similarity"]
-                emotion = r.get("emotion", None)
-                transcript = r.get("transcript", "")
-                lang = r.get("text_language", "unknown")
-
-                full_path = Path(r["full_path"]).as_posix()
-                tools = CoreTools(full_path)
+                full_path = Path(r["audio_path"]).as_posix()
+                fname = Path(full_path).name
 
                 st.markdown(f"""
                 ### 🎵 {fname}
-                **Folder:** `{folder}`  
-                🌐 **Language:** `{lang}`  
-                🔊 **Semantic Similarity:** `{semantic:.3f}`  
-                🎭 **Emotion:** `{emotion}`
+                🔊 **Similarity:** `{r.get("similarity", 0):.3f}`  
+                🎭 **Emotion:** `{r.get("emotion", "unknown")}`  
+                🌐 **Query Language:** `{r.get("language", "n/a")}`
                 """)
 
-                # --- QUERY SEGMENTS HIGHLIGHT ---
-                try:
-                    segments = audio.get_query_segments(Path(full_path), query)
-                except Exception as e:
-                    segments = []
-                    st.warning(f"Could not compute query segments: {e}")
-
-                st.write("### 📊 Audio Visualization")
-
-                tools.plot_waveform_and_spectrogram_with_highlights(
-                    query_segments=segments, emotion_label=r["emotion"]
-                )
-
-                with st.expander("📄 Transcript"):
-                    st.write(transcript)
-
+                # AUDIO PLAYER
                 try:
                     with open(full_path, "rb") as f:
                         st.audio(f.read(), format="audio/wav")
                     st.caption(full_path)
                 except Exception as e:
-                    st.error(f"Could not load audio file `{full_path}`: {e}")
+                    st.error(f"Could not load audio: {e}")
+
+                # EMOTION PROBS
+                if r.get("emotion_probs"):
+                    with st.expander("🎭 Emotion probabilities"):
+                        st.json(r["emotion_probs"])
 
                 st.markdown("---")
 
-    # reset για να μην ξανατρέχει σε κάθε refresh
     st.session_state.run_audio_search = False

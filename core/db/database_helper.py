@@ -2,11 +2,12 @@ import sqlite3
 import os
 from pathlib import Path
 
+
 DB_PATH = Path(__file__).resolve().parents[1] / "content_search_ai.db"
 
 
 class DatabaseHelper:
-    def __init__(self, db_path):
+    def __init__(self, db_path: str):
         self.db_path = db_path
         self.initialise_database()
 
@@ -63,14 +64,14 @@ class DatabaseHelper:
         """)
 
         # ---------------------------
-        # AUDIO EMOTIONS
+        # AUDIO EMOTIONS (FINAL)
         # ---------------------------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS audio_emotions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 audio_path TEXT UNIQUE,
                 emotion TEXT,
-                emotion_scores TEXT,
+                emotion_probs TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -92,11 +93,14 @@ class DatabaseHelper:
         conn.close()
         print("✅ Database created successfully.")
 
+    # =========================================
+    #               CONNECTION
+    # =========================================
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
 
     # =========================================
-    #                IMAGES
+    #                  IMAGES
     # =========================================
     def insert_image(self, filename, filepath, embedding):
         conn = self._get_conn()
@@ -114,14 +118,6 @@ class DatabaseHelper:
         cur.execute("DELETE FROM images WHERE filepath = ?", (filepath,))
         conn.commit()
         conn.close()
-
-    def get_all_image_filenames(self):
-        conn = self._get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT filename FROM images")
-        rows = cur.fetchall()
-        conn.close()
-        return [r[0] for r in rows]
 
     def get_all_image_paths(self):
         conn = self._get_conn()
@@ -172,13 +168,14 @@ class DatabaseHelper:
         conn.commit()
         conn.close()
 
-    def insert_audio_emotion(self, audio_path, emotion, emotion_scores_json):
+    def insert_audio_emotion(self, audio_path, emotion, emotion_probs_json):
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("""
-            INSERT OR REPLACE INTO audio_emotions (audio_path, emotion, emotion_scores)
+            INSERT OR REPLACE INTO audio_emotions
+            (audio_path, emotion, emotion_probs)
             VALUES (?, ?, ?)
-        """, (audio_path, emotion, emotion_scores_json))
+        """, (audio_path, emotion, emotion_probs_json))
         conn.commit()
         conn.close()
 

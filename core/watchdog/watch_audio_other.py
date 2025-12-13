@@ -1,4 +1,3 @@
-# core/watchdog/watch_audio_other.py
 import time
 import json
 from pathlib import Path
@@ -114,7 +113,7 @@ class AudioOtherHandler(FileSystemEventHandler):
 
         try:
             # ----------------------------------------
-            # 1️⃣ Transcription
+            # 1️⃣ Transcription (for semantic embedding)
             # ----------------------------------------
             segments, _ = self.whisper.transcribe(
                 full_path,
@@ -123,31 +122,34 @@ class AudioOtherHandler(FileSystemEventHandler):
             transcript = " ".join(seg.text for seg in segments).strip()
 
             # ----------------------------------------
-            # 2️⃣ Embedding with M-CLIP
+            # 2️⃣ M-CLIP embedding (text → vector)
             # ----------------------------------------
             emb = self.mclip.encode(
                 transcript,
                 normalize_embeddings=True
             ).astype(np.float32)
+
             emb_bytes = emb.tobytes()
 
             # ----------------------------------------
-            # 3️⃣ Emotion Analysis
+            # 3️⃣ Emotion analysis (audio → probs)
             # ----------------------------------------
-            emotion, prob_dict = self.emotion_model.predict(full_path)
-            emotion_json = json.dumps(prob_dict)
-
-            filename = Path(full_path).name
+            emotion, emotion_probs = self.emotion_model.predict(full_path)
+            emotion_probs_json = json.dumps(emotion_probs)
 
             # ----------------------------------------
             # 4️⃣ Save to DB
             # ----------------------------------------
             self.db.insert_audio_embedding(rel_path, emb_bytes)
-            self.db.insert_audio_emotion(rel_path, emotion, emotion_json)
+            self.db.insert_audio_emotion(
+                rel_path,
+                emotion,
+                emotion_probs_json
+            )
 
-            print(f"💾 AUDIO Saved to DB → {filename}")
-            print(f"   • emotion: {emotion}")
-            print(f"   • path   : {rel_path}")
+            print(f"💾 AUDIO Saved to DB → {Path(full_path).name}")
+            print(f"   • emotion : {emotion}")
+            print(f"   • path    : {rel_path}")
 
         except Exception as e:
             print(f"❌ Error processing new audio {full_path}: {e}")
@@ -160,12 +162,10 @@ def start_watch():
     handler = AudioOtherHandler()
     observer = Observer()
 
-    watch_dir = handler.watch_dir
-
     print("\n🎧 Watching AUDIO OTHER folder:")
-    print(watch_dir)
+    print(handler.watch_dir)
 
-    observer.schedule(handler, watch_dir, recursive=False)
+    observer.schedule(handler, handler.watch_dir, recursive=False)
     observer.start()
 
     try:
