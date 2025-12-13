@@ -37,8 +37,7 @@ def run_streamlit():
 # MAIN
 # ============================
 if __name__ == "__main__":
-    # 4 workers για 4 ανεξάρτητες εργασίες
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         run_initial_sync()
         executor.submit(run_watchdog_images)
         executor.submit(run_watchdog_pdfs)
