@@ -408,54 +408,78 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("💬 Text-to-Image Search")
 
-    # state για να κάνουμε trigger το search
+    # ----------------------------------
+    # State init
+    # ----------------------------------
     if "run_text_search" not in st.session_state:
         st.session_state.run_text_search = False
 
     def trigger_text_search():
         st.session_state.run_text_search = True
 
+    # ----------------------------------
+    # Input
+    # ----------------------------------
     query = st.text_input(
         "✍️ Enter your search query",
         value="",
         on_change=trigger_text_search
     )
 
-    run_btn = st.button("🔎 Run Text Search")
-
-    # Run search if: Enter pressed OR button clicked
-    if run_btn:
+    if st.button("🔎 Run Text Search"):
         st.session_state.run_text_search = True
 
+    # ----------------------------------
+    # Run search
+    # ----------------------------------
     if st.session_state.run_text_search:
         if not query.strip():
             st.warning("⚠️ Please enter a search phrase.")
         else:
             st.info(f"Searching for: '{query}' ...")
-            start = time.time()
+
             results = searcher.search(query, top_k=top_k)
-            elapsed = time.time() - start
 
-            if results:
-                cols = st.columns(top_k)
+            if not results:
+                st.warning("No results found.")
+            else:
+                cols = st.columns(len(results))
 
-                for idx, r in enumerate(results[:top_k]):
-                    img_path = r["path"]
+                for idx, r in enumerate(results):
                     score = r["score"]
                     confidence = r.get("confidence", None)
 
+                    # -------------------------
+                    # Explainability text
+                    # -------------------------
+                    explain_text = ""
+                    if confidence is not None:
+                        if confidence >= 0.7:
+                            explain_text = "🟢 High semantic relevance"
+                        elif confidence >= 0.4:
+                            explain_text = "🟡 Partial semantic match"
+                        else:
+                            explain_text = "🔴 Low confidence – weak semantic overlap"
+
+                    # -------------------------
+                    # Caption
+                    # -------------------------
                     caption = f"Similarity: {score * 100:.2f}%"
                     if confidence is not None:
                         caption += f"\nConfidence: {confidence * 100:.1f}%"
+                        caption += f"\n{explain_text}"
 
                     cols[idx].image(
-                        img_path,
+                        r["path"],
                         caption=caption,
                         use_container_width=True
                     )
 
-    # reset state after rendering
+    # ----------------------------------
+    # Reset trigger
+    # ----------------------------------
     st.session_state.run_text_search = False
+
 
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH

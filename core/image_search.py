@@ -1,15 +1,12 @@
-import os
 import sqlite3
 import numpy as np
 import torch
 import clip
 from PIL import Image
 from sentence_transformers import SentenceTransformer
-import time
-
 
 # =========================================================
-# QUERY NORMALIZATION (μόνο EL → EN, ΟΧΙ semantics)
+# QUERY NORMALIZATION (deterministic, multilingual-safe)
 # =========================================================
 def normalize_text_image_query(query: str, lang: str) -> str:
     query = query.strip().lower()
@@ -29,15 +26,35 @@ def normalize_text_image_query(query: str, lang: str) -> str:
 
     return query
 
+# =========================================================
+# PROMPT TEMPLATES (LOCKED)
+# =========================================================
+PROMPT_TEMPLATES = [
+    "a photo of {q}",
+    "a picture of {q}",
+    "a photo showing {q}",
+    "an image of {q}",
+]
 
-def build_prompt_variants(query: str):
-    return list(dict.fromkeys([
-        f"a photo of {query}",
-        f"a picture of {query}",
-        f"a photo showing {query}",
-        query
-    ]))
 
+def build_prompt_variants(q: str):
+    prompts = [t.format(q=q) for t in PROMPT_TEMPLATES]
+
+    variants = [q]
+
+    if "man" in q:
+        variants.append(q.replace("man", "person"))
+    if "woman" in q:
+        variants.append(q.replace("woman", "person"))
+    if "riding" in q:
+        variants.append(q.replace("riding", "on"))
+
+    variants = list(dict.fromkeys(variants))
+
+    for v in variants:
+        prompts.extend(t.format(q=v) for t in PROMPT_TEMPLATES)
+
+    return list(dict.fromkeys(prompts))
 
 def detect_language(text: str):
     for ch in text:
@@ -45,9 +62,8 @@ def detect_language(text: str):
             return "el"
     return "en"
 
-
 # =========================================================
-# IMAGE SEARCHER (GENERIC)
+# IMAGE SEARCHER (PURE RETRIEVAL CORE)
 # =========================================================
 class ImageSearcher:
 
@@ -56,6 +72,7 @@ class ImageSearcher:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.image_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
+
         self.text_model = SentenceTransformer(
             "./models/mclip_finetuned_coco_ready",
             device=self.device
@@ -79,7 +96,7 @@ class ImageSearcher:
         ]
 
     # -----------------------------------------------------
-    # TEXT → IMAGE (GENERIC RETRIEVAL)
+    # TEXT → IMAGE (GENERIC, PURE SIMILARITY)
     # -----------------------------------------------------
     def search(self, query: str, top_k=5):
         images = self._load_sqlite_embeddings()
@@ -87,8 +104,8 @@ class ImageSearcher:
             raise RuntimeError("No image embeddings found")
 
         lang = detect_language(query)
-        query = normalize_text_image_query(query, lang)
-        prompts = build_prompt_variants(query)
+        q_norm = normalize_text_image_query(query, lang)
+        prompts = build_prompt_variants(q_norm)
 
         query_embs = self.text_model.encode(
             prompts,
@@ -96,35 +113,32 @@ class ImageSearcher:
             normalize_embeddings=True
         ).astype(np.float32)
 
-        # -----------------------------------
-        # 1️⃣ Coarse scoring
-        # -----------------------------------
-        scores = []
-        for img in images:
-            sim = max(float(np.dot(q, img["vector"])) for q in query_embs)
-            scores.append(sim)
+        # -----------------------------
+        # Coarse similarity distribution
+        # -----------------------------
+        sims = np.array([
+            max(float(np.dot(q, img["vector"])) for q in query_embs)
+            for img in images
+        ])
 
-        scores = np.array(scores)
-        mean, std = scores.mean(), scores.std()
+        mean, std = sims.mean(), sims.std()
+        MIN_SIM = mean + 0.3 * std   # adaptive, generic
 
-        # adaptive threshold (GENERIC)
-        MIN_SIM = mean + 0.3 * std
-
-        # -----------------------------------
-        # 2️⃣ Final ranking
-        # -----------------------------------
+        # -----------------------------
+        # Final ranking
+        # -----------------------------
         results = []
-        for img, sim in zip(images, scores):
+        for img, sim in zip(images, sims):
             if sim < MIN_SIM:
                 continue
 
             confidence = (sim - mean) / (std + 1e-6)
-            confidence = max(0.0, min(confidence, 1.0))
+            confidence = float(np.clip(confidence, 0.0, 1.0))
 
             results.append({
                 "filename": img["filename"],
                 "score": float(sim),
-                "confidence": float(confidence),
+                "confidence": confidence,
                 "path": img["path"]
             })
 
@@ -132,7 +146,7 @@ class ImageSearcher:
         return results[:top_k]
 
     # -----------------------------------------------------
-    # IMAGE → IMAGE (unchanged, generic)
+    # IMAGE → IMAGE (PURE)
     # -----------------------------------------------------
     def search_by_image(self, query_image_path: str, top_k=5):
         images = self._load_sqlite_embeddings()
