@@ -438,14 +438,19 @@ with tabs[3]:
 
             if results:
                 cols = st.columns(top_k)
+
                 for idx, r in enumerate(results[:top_k]):
                     img_path = r["path"]
                     score = r["score"]
-                    source = "COCO" if "val2017" in img_path else "Other"
+                    confidence = r.get("confidence", None)
+
+                    caption = f"Similarity: {score * 100:.2f}%"
+                    if confidence is not None:
+                        caption += f"\nConfidence: {confidence * 100:.1f}%"
 
                     cols[idx].image(
                         img_path,
-                        caption=f"Similarity: {score * 100:.2f}% | Dataset: {source}",
+                        caption=caption,
                         use_container_width=True
                     )
 
