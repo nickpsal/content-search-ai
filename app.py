@@ -3,8 +3,27 @@ import time
 import streamlit as st
 import base64
 from pathlib import Path
-from core import ImageSearcher, PDFSearcher, Model, AudioSearcher, CoreTools
+from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
 import psutil
+from core.db.database_helper import DatabaseHelper
+
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "content_search_ai.db"
+
+db = DatabaseHelper(str(DB_PATH))
+
+def get_watchdog(db, name):
+    row = db.get_watchdog_status(name)
+    if not row:
+        return None
+
+    return {
+        "status": row["status"],
+        "last_event": row["last_event"],
+        "last_updated": row["last_updated"],
+        "processed": row["processed_count"],
+        "error": row["error"],   # ✅ ΣΩΣΤΟ KEY
+    }
 
 # ======================================================
 # 🧠 STREAMLIT CONFIGURATION
@@ -174,6 +193,9 @@ div[data-testid="stTextInput"] label {
     background: none !important;
 }
 
+.dash-card {
+    margin-bottom: 18px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -200,7 +222,7 @@ st.markdown(f"""
         <p style="margin-top:4px;color:#9aa0a6;font-size:1.1rem;">
             Search Content in Multimedia Digital Archives using AI
         </p>
-        <p style="margin-top:-8px;color:#9aa0a6;font-size:0.9rem;">Version 1.7</p>
+        <p style="margin-top:-8px;color:#9aa0a6;font-size:0.9rem;">Version 1.8</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -232,36 +254,84 @@ tabs = st.tabs([
 with tabs[0]:
     st.subheader("📊 System Dashboard")
 
-    # Manual refresh button (optional)
     if st.button("🔄 Refresh Now"):
         st.rerun()
 
-    # LIVE CPU / RAM
     cpu_percent = psutil.cpu_percent(interval=0.3)
     ram_percent = psutil.virtual_memory().percent
 
-    st.markdown(f"""
-    <div class="dashboard-grid">
+    images_wd = get_watchdog(db, "images")
+    pdfs_wd   = get_watchdog(db, "pdfs")
+    audio_wd  = get_watchdog(db, "audio")
+
+    def status_badge(status):
+        return {
+            "Running": "🟡 Running",
+            "Idle": "🟢 Idle",
+            "Error": "🔴 Error",
+        }.get(status, "⚪ Unknown")
+
+    # ===============================
+    # ROW 1 — SYSTEM + INDEX
+    # ===============================
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
         <div class="dash-card">
             <h3>🧠 System Overview</h3>
-            <p><strong>CPU Usage:</strong> {cpu_percent}%</p>
-            <p><strong>RAM Usage:</strong> {ram_percent}%</p>
+            <p><strong>CPU Usage:</strong> {:.1f}%</p>
+            <p><strong>RAM Usage:</strong> {:.1f}%</p>
         </div>
+        """.format(cpu_percent, ram_percent), unsafe_allow_html=True)
 
+    with col2:
+        st.markdown(f"""
+        <div class="dash-card">
+            <h3>📊 Indexed Content</h3>
+            <p>🖼 Images: <strong>{db.count_images()}</strong></p>
+            <p>📄 PDF Pages: <strong>{db.count_pdf_pages()}</strong></p>
+            <p>🎧 Audio Files: <strong>{db.count_audio()}</strong></p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ===============================
+    # ROW 2 — IMAGES + PDFS
+    # ===============================
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown(f"""
         <div class="dash-card">
             <h3>🖼 Images Watchdog</h3>
-            <p>Placeholder – εδώ θα μπει status για επεξεργασία εικόνων.</p>
+            <p>Status: <strong>{status_badge(images_wd["status"])}</strong></p>
+            <p>Last event: {images_wd["last_event"]}</p>
+            <p>Processed files: {images_wd["processed"]}</p>
+            {f"<p style='color:#ff6b6b'>Error: {images_wd['error']}</p>" if images_wd["error"] else ""}
         </div>
+        """, unsafe_allow_html=True)
 
+    with col4:
+        st.markdown(f"""
         <div class="dash-card">
             <h3>📄 PDFs Watchdog</h3>
-            <p>Placeholder – εδώ θα μπει status για PDF indexing.</p>
+            <p>Status: <strong>{status_badge(pdfs_wd["status"])}</strong></p>
+            <p>Last event: {pdfs_wd["last_event"]}</p>
+            <p>Processed pages: {pdfs_wd["processed"]}</p>
+            {f"<p style='color:#ff6b6b'>Error: {pdfs_wd['error']}</p>" if pdfs_wd["error"] else ""}
         </div>
+        """, unsafe_allow_html=True)
 
-        <div class="dash-card">
-            <h3>🎧 Audio Watchdog</h3>
-            <p>Placeholder – εδώ θα μπει status για audio & emotions.</p>
-        </div>
+    # ===============================
+    # ROW 3 — AUDIO (FULL WIDTH)
+    # ===============================
+    st.markdown(f"""
+    <div class="dash-card">
+        <h3>🎧 Audio Watchdog</h3>
+        <p>Status: <strong>{status_badge(audio_wd["status"])}</strong></p>
+        <p>Last event: {audio_wd["last_event"]}</p>
+        <p>Processed files: {audio_wd["processed"]}</p>
+        {f"<p style='color:#ff6b6b'>Error: {audio_wd['error']}</p>" if audio_wd["error"] else ""}
     </div>
     """, unsafe_allow_html=True)
 
@@ -272,122 +342,192 @@ with tabs[1]:
     st.subheader("ℹ️ Application Information")
 
     # ======================================================
-    # 🧠 ABOUT THIS PROJECT — CARD
+    # 🧠 ABOUT THIS PROJECT
     # ======================================================
     with st.container():
         with st.expander("🧠 About This Project", expanded=True):
             st.markdown("""
-                This system is a **unified multimodal retrieval platform** capable of searching across  
-                **Images, PDFs, Audio**, and **Text**, all inside a single shared semantic embedding space.
+        This system is a **unified multimodal semantic retrieval platform** capable of searching across  
+        **Images, PDFs, Audio, and Text**, all within a **single shared embedding space**.
+        
+        The platform is designed with **research-grade architectural principles**, focusing on:
+        - **Pure embedding-based retrieval**
+        - **Strict separation between retrieval and explainability**
+        - **Multilingual support without translation models**
+        - **Database-first indexing and querying**
+        - **No heuristic rules, boosts, or hard constraints**
+        
+        It supports the following retrieval modes:
+        - **Text → Image**
+        - **Image → Image**
+        - **Text → PDF**
+        - **PDF → PDF**
+        - **Text → Audio (via transcripts)**
+        - **Emotion-based Audio Filtering**
+        
+        As of **v1.8**, the retrieval core is considered **final, stable, and locked**.
+        
+        ---
+        ### 🧩 Technologies Used
+        - **Python 3.11**
+        - **Streamlit**
+        - **SQLite3 (Unified Multimodal DB)**
+        - **PyTorch**
+        - **Sentence-Transformers**
+        - **CLIP / M-CLIP (ViT-B/32)**
+        - **OpenAI Whisper & Faster-Whisper**
+        - **Emotion Model V5**
+        - **PyMuPDF**
+        - **Watchdog (real-time indexing)**
+        
+        ---
+        ### ⚙️ Model Architecture Overview
+        - **M-CLIP (ViT-B/32)**  
+          → Unified multilingual embedding space for text, images, PDFs, and audio transcripts
+        
+        - **CLIP Image Encoder**  
+          → Image → Image similarity using pure visual embeddings
+        
+        - **Whisper-small / Faster-Whisper**  
+          → Audio transcription (indexing only)
+        
+        - **Emotion Model V5**  
+          → 6-class emotion classification (angry, disgust, fearful, happy, neutral, sad)
+        
+        - **PDF Page Encoder**  
+          → Per-page semantic embeddings with paragraph-level explainability
+        
+        All retrieval operations rely **exclusively on cosine similarity** between normalized embeddings.
+                    """)
 
-                It demonstrates practical and research-level techniques in:
-                - **Image Search** (text → image, image → image)  
-                - **PDF Document Search** (text → PDF, PDF → PDF)  
-                - **Audio Semantic Search** (Whisper transcription + M-CLIP embeddings)  
-                - **Emotion Detection** (Emotion Model V5)  
-                - **Real-time indexing using Watchdogs**  
-
-                A major milestone is the completion of **v1.7**, which replaces  
-                all local embedding files with a **unified SQLite multimodal database**  
-                and introduces **automatic real-time filesystem indexing**.
-
-                ---
-                ### 🧩 Technologies Used
-                - **Python 3.11**
-                - **Streamlit**
-                - **PyTorch / Sentence-Transformers**
-                - **OpenAI Whisper & Faster-Whisper**
-                - **M-CLIP multilingual model**
-                - **Emotion Model V5**
-                - **PyMuPDF**
-                - **FAISS**
-                - **SQLite3**
-
-                ---
-                ### ⚙️ Model Architecture Overview
-                - **M-CLIP (ViT-B/32)** → unified text/image/PDF/audio embeddings  
-                - **Whisper-small** → speech-to-text transcription  
-                - **Audio semantic encoder** → transcript embeddings with M-CLIP  
-                - **Emotion Model V5** → 6-class emotional classification  
-                - **Per-page PDF encoder** → M-CLIP page embeddings  
-
-                Together, these components form a **cross-modal AI retrieval engine**  
-                supporting fully multilingual queries.
-            """)
-
-    # ======================================================
-    # 📘 VERSION HISTORY — CARD
-    # ======================================================
-    st.markdown('<div class="stCard">', unsafe_allow_html=True)
-    with st.container():
-        with st.expander("📘 Version History", expanded=False):
-            st.markdown("""
-                ## 🟢 **v1.7 — Full Multimodal SQLite Integration & Real-Time Indexing (November 2025)**  
-                This is the largest structural update so far.  
-
-                ### 🔥 Highlights
-                - Introduced a **single unified SQLite database** for all modalities:
-                    - `images`
-                    - `pdf_pages`
-                    - `audio_embeddings`
-                    - `audio_emotions`
-                - Removed **all old embedding/transcript folders**:
-                    - `data/transcripts/`
-                    - `data/embeddings/`
-                    - `data/transcripts/embeds/`
-                    - all `.npy` and `.txt` cache files  
-                - Full **relative path normalization** for cross-platform compatibility  
-                - Rebuilt **all transcripts** with Whisper  
-                - Rebuilt **all emotion predictions** with the V5 model  
-                - Introduced **Watchdog services** for:
-                    - 🔄 Images  
-                    - 📄 PDFs  
-                    - 🎧 Audio  
-                - Automatic:
-                    - detection of file creation/deletion  
-                    - embedding extraction  
-                    - DB insertion/removal  
-                - Removed all manual “rebuild” buttons from UI  
-                - Massive codebase cleanup and folder restructuring  
-
-                ---
-                ## 🟢 **v1.6 — Audio Search Integration (November 2025)**
-                - Whisper transcription engine  
-                - M-CLIP semantic audio search  
-                - Emotion Model V5 integration  
-                - Word-level timestamp detection  
-                - Audio visualization module  
-
-                ---
-                ## 🟢 **v1.5 — Stable Release (October 2025)**
-                - Full PDF search module  
-                - PDF per-page processing  
-                - Document similarity module  
-                - UI improvements  
-
-                ---
-                ## 🟠 **v1.4 — Core Integration (September 2025)**
-                - Modular UI  
-                - Caching system  
-                - Layout refactoring  
-
-                ---
-                ## 🟡 **v1.3 — M-CLIP (August 2025)**
-                - Multilingual CLIP  
-                - Unified embedding space  
-
-                ---
-                ## 🔵 **v1.2 — Visual Search Prototype (June 2025)**
-                - Text → Image  
-                - Image → Image  
-
-                ---
-                ## ⚪ **v1.1 — Research Setup (May 2025)**  
-
-                ---
-                ## ⚫ **v1.0 — Project Start (April 2025)**
-            """)
-    st.markdown('</div>', unsafe_allow_html=True)
+            # ======================================================
+            # 📘 VERSION HISTORY
+            # ======================================================
+            with st.container():
+                with st.expander("📘 Version History", expanded=False):
+                    st.markdown("""
+        ## 🟢 **v1.8 — Retrieval Core Stabilization & Explainability Lock**  
+        **(December 2025)**
+        
+        This release finalizes the **semantic retrieval architecture** and ensures full correctness,
+        consistency, and explainability across all supported modalities.
+        
+        ### 🔥 Key Improvements (This Session)
+        
+        #### 🧠 Retrieval Core Finalization
+        - Confirmed **pure cosine similarity retrieval** across:
+          - Images
+          - PDFs
+          - Audio
+        - No usage of:
+          - keywords
+          - filename rules
+          - domain heuristics
+          - task-specific boosts
+        - Adaptive similarity thresholding unified across all modalities.
+        - Retrieval logic is **modality-agnostic and symmetric**.
+        
+        ---
+        
+        #### 📄 PDF Search — Explainability Completion
+        - Retrieval unit finalized as **PDF page embeddings**.
+        - Ranking based solely on **page-level semantic similarity**.
+        - Added **paragraph-level explainability**:
+          - The most semantically similar paragraph is identified per page.
+          - Paragraph selection does **not affect ranking**.
+        - Confidence score:
+          - Derived from similarity distribution
+          - Used **only for UI explainability**
+          - Never affects ranking or filtering
+        
+        ---
+        
+        #### 🎧 Audio Search — DB-First Architecture
+        - Fully migrated audio retrieval to **SQLite-only runtime**.
+        - Audio embeddings loaded exclusively from:
+          - `audio_embeddings`
+          - `audio_emotions`
+        - Whisper used **only during indexing**, never during search.
+        - Emotion metadata:
+          - Stored as probabilities
+          - Used optionally for filtering and explainability
+        - Safe and deterministic model loading (no meta tensors).
+        
+        ---
+        
+        #### 🎭 Emotion Model V5 — Locked Integration
+        - Emotion inference finalized as **pure post-processing**.
+        - No interaction with semantic similarity.
+        - 6 fixed emotion classes.
+        - Emotion probabilities exposed for **explainability only**.
+        
+        ---
+        
+        #### 🧩 Architectural Principles Enforced
+        - Strict separation between:
+          - Retrieval core
+          - Explainability layer
+          - UI rendering
+        - Unified retrieval pipeline for all modalities:
+          1. Encode
+          2. Compare
+          3. Rank
+          4. Explain (non-intrusive)
+        
+        This version marks the point where the system is considered:
+        - **Architecturally complete**
+        - **Retrieval-correct**
+        - **Explainable without bias**
+        - **Ready for academic documentation**
+        
+        No further changes are planned for the retrieval core.
+        
+        ---
+        ## 🟢 **v1.7 — Full Multimodal SQLite Integration & Real-Time Indexing**  
+        **(November 2025)**
+        
+        - Unified SQLite database for all modalities:
+          - `images`
+          - `pdf_pages`
+          - `audio_embeddings`
+          - `audio_emotions`
+        - Removed all local embedding and transcript caches.
+        - Introduced Watchdog-based real-time indexing.
+        - Automatic DB updates on file create/delete.
+        - Full path normalization.
+        - Major codebase cleanup.
+        
+        ---
+        ## 🟢 **v1.6 — Audio Search Integration**
+        - Whisper transcription
+        - M-CLIP audio semantic search
+        - Emotion Model V5
+        - Audio visualization
+        
+        ---
+        ## 🟢 **v1.5 — Stable PDF Search**
+        - Page-level PDF processing
+        - Document similarity
+        - UI improvements
+        
+        ---
+        ## 🟠 **v1.4 — Core Integration**
+        - Modular UI
+        - Cache system
+        - Layout refactor
+        
+        ---
+        ## 🟡 **v1.3 — M-CLIP Adoption**
+        - Multilingual unified embeddings
+        
+        ---
+        ## 🔵 **v1.2 — Visual Search Prototype**
+        - Text → Image
+        - Image → Image
+        
+        ---
+        ## ⚫ **v1.0 — Project Initialization**
+                    """)
 
 # ======================================================
 # ⚙️ SETTINGS TAB WITH ACCORDIONS
