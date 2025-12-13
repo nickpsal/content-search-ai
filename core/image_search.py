@@ -160,13 +160,28 @@ class ImageSearcher:
             q /= q.norm(dim=-1, keepdim=True)
             q = q.cpu().numpy().flatten()
 
+        sims = np.array([
+            float(np.dot(q, img["vector"]))
+            for img in images
+        ])
+
+        mean, std = sims.mean(), sims.std()
+        MIN_SIM = mean + 0.3 * std  # ίδιο philosophy με Text→Image
+
         results = []
-        for img in images:
-            sim = float(np.dot(q, img["vector"]))
+        for img, sim in zip(images, sims):
+            if sim < MIN_SIM:
+                continue
+
+            confidence = (sim - mean) / (std + 1e-6)
+            confidence = float(np.clip(confidence, 0.0, 1.0))
+
             results.append({
                 "filename": img["filename"],
-                "score": sim,
-                "path": img["path"]
+                "score": float(sim),
+                "confidence": confidence,
+                "path": img["path"],
+                "explain": "Matched via global visual similarity using CLIP image embeddings"
             })
 
         results.sort(key=lambda x: x["score"], reverse=True)

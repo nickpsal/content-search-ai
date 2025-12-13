@@ -480,13 +480,15 @@ with tabs[3]:
     # ----------------------------------
     st.session_state.run_text_search = False
 
-
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
 # ======================================================
 with tabs[4]:
     st.subheader("🖼️ Image-to-Image Search")
-    uploaded_file = st.file_uploader("📤 Upload an image", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader(
+        "📤 Upload an image",
+        type=["jpg", "jpeg", "png"]
+    )
 
     if uploaded_file is not None:
         query_image_path = os.path.join("data/query_images", uploaded_file.name)
@@ -507,15 +509,20 @@ with tabs[4]:
                 st.warning("No similar images found.")
             else:
                 st.success(f"✅ Found {len(results)} similar images in {elapsed:.2f}s")
-                cols = st.columns(top_k)
-                for idx, r in enumerate(results[:top_k]):
-                    img_path = r["path"]
-                    score = r["score"]
-                    source = "COCO" if "val2017" in img_path else "Other"
+
+                cols = st.columns(len(results))  # ✅ FIX
+
+                for idx, r in enumerate(results):
+                    caption = f"Similarity: {r['score'] * 100:.2f}%"
+
+                    if r.get("confidence") is not None:
+                        caption += f"\nConfidence: {r['confidence'] * 100:.1f}%"
+
+                    caption += "\nReason: visual embedding similarity"
 
                     cols[idx].image(
-                        img_path,
-                        caption=f"Similarity: {score * 100:.2f}% | Dataset: {source}",
+                        r["path"],
+                        caption=caption,
                         use_container_width=True
                     )
 
