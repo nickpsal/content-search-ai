@@ -31,7 +31,7 @@ def sync_images():
     images_dir = BASE_DIR / "data/images"
     fs_files = {f for f in os.listdir(images_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))}
 
-    db_files = set(db.get_all_image_filenames())
+    db_files = set(db.get_all_image_paths())
 
     # A: Missing in database → INSERT
     to_insert = fs_files - db_files
