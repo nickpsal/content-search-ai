@@ -6,6 +6,13 @@ from pathlib import Path
 from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
 import psutil
 from core.db.database_helper import DatabaseHelper
+import pandas as pd
+import os
+from core.explainability import (
+    estimate_computational_summary,
+    summary_to_lines,
+    build_results_table,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "content_search_ai.db"
@@ -545,6 +552,9 @@ with tabs[2]:
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
 # ======================================================
+import sqlite3
+import pandas as pd
+
 with tabs[3]:
     st.subheader("💬 Text-to-Image Search")
 
@@ -576,22 +586,74 @@ with tabs[3]:
         if not query.strip():
             st.warning("⚠️ Please enter a search phrase.")
         else:
-            st.info(f"Searching for: '{query}' ...")
+            st.info(f"🔍 Searching for: '{query}' ...")
 
+            # -------------------------------
+            # CORE SEARCH (NO CHANGES)
+            # -------------------------------
             results = searcher.search(query, top_k=top_k)
 
             if not results:
-                st.warning("No results found.")
+                st.warning("❌ No results found.")
             else:
+                # ======================================================
+                # 🔎 TRUE INDEX SIZE FROM SQLITE (NO GUESSING)
+                # ======================================================
+                conn = sqlite3.connect(DB_PATH)
+                cur = conn.cursor()
+
+                cur.execute("SELECT COUNT(*) FROM images")
+                indexed_items = cur.fetchone()[0]
+
+                conn.close()
+
+                # ======================================================
+                # 🧠 EXPLAINABILITY: COMPUTATIONAL SUMMARY
+                # ======================================================
+                summary = estimate_computational_summary(
+                    query=query,
+                    results=results,
+                    indexed_items=indexed_items,      # ✅ REAL N
+                    embedding_dim=512,
+                    compared_items=indexed_items,     # brute-force over archive
+                    top_k=top_k
+                )
+
+                with st.expander("🧠 Computational Summary (Explainability)", expanded=False):
+                    st.text("\n".join(summary_to_lines(summary)))
+
+                    st.text("\nCosine similarity formula used:\n")
+                    st.code(
+                        "sim(q, i) = (t · v_i) / (||t|| · ||v_i||)\n"
+                        "t = TextEncoder(query)\n"
+                        "v_i = ImageEncoder(image_i)",
+                        language="text"
+                    )
+
+                    st.text(
+                        "\nNote on confidence values:\n"
+                        "- Confidence is a relative measure based on similarity distribution.\n"
+                        "- When few results are returned, confidence may reach high values.\n"
+                        "- Confidence does NOT affect ranking."
+                    )
+
+                # ======================================================
+                # 📊 NUMERICAL RESULTS (TOP-K)
+                # ======================================================
+                with st.expander("📊 Numerical Results (Top-K)", expanded=False):
+                    rows = build_results_table(results)
+                    df = pd.DataFrame(rows)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+                # ======================================================
+                # 🖼️ IMAGES
+                # ======================================================
                 cols = st.columns(len(results))
 
                 for idx, r in enumerate(results):
                     score = r["score"]
                     confidence = r.get("confidence", None)
 
-                    # -------------------------
-                    # Explainability text
-                    # -------------------------
                     explain_text = ""
                     if confidence is not None:
                         if confidence >= 0.7:
@@ -601,9 +663,6 @@ with tabs[3]:
                         else:
                             explain_text = "🔴 Low confidence – weak semantic overlap"
 
-                    # -------------------------
-                    # Caption
-                    # -------------------------
                     caption = f"Similarity: {score * 100:.2f}%"
                     if confidence is not None:
                         caption += f"\nConfidence: {confidence * 100:.1f}%"
@@ -619,6 +678,7 @@ with tabs[3]:
     # Reset trigger
     # ----------------------------------
     st.session_state.run_text_search = False
+
 
 # ======================================================
 # 🖼️ IMAGE → IMAGE SEARCH
