@@ -798,7 +798,7 @@ with tabs[5]:
         if not query_text.strip():
             st.warning("⚠️ Please enter text before searching.")
         else:
-            st.info(f"Searching for: '{query_text}' ...")
+            st.info(f"🔍 Searching for: '{query_text}' ...")
 
             searcher = PDFSearcher(db_path="content_search_ai.db")
 
@@ -811,8 +811,53 @@ with tabs[5]:
             if not results:
                 st.warning("❌ No matching PDFs found.")
             else:
-                st.success(f"✅ Found {len(results)} relevant PDF pages!")
+                st.success(f"✅ Found {len(results)} relevant PDF pages")
 
+                # ======================================================
+                # 🧠 COMPUTATIONAL SUMMARY (EXPLAINABILITY)
+                # ======================================================
+                indexed_items = len(results)
+
+                summary = estimate_computational_summary(
+                    query=query_text,
+                    results=results,
+                    indexed_items=indexed_items,
+                    embedding_dim=512,
+                    compared_items=indexed_items,
+                    top_k=top_k
+                )
+
+                with st.expander("🧠 Computational Summary (Explainability)", expanded=False):
+                    st.text("\n".join(summary_to_lines(summary)))
+
+                    st.text("\nCosine similarity formula used:\n")
+                    st.code(
+                        "sim(q, p_i) = (t · v_i) / (||t|| · ||v_i||)\n"
+                        "t = TextEncoder(query_text)\n"
+                        "v_i = TextEncoder(pdf_page_i)",
+                        language="text"
+                    )
+
+                # ======================================================
+                # 📊 NUMERICAL RESULTS TABLE (TOP-K)
+                # ======================================================
+                with st.expander("📊 Numerical Results (Top-K)", expanded=False):
+                    table_rows = []
+                    for i, r in enumerate(results, start=1):
+                        table_rows.append({
+                            "Rank": i,
+                            "PDF": os.path.basename(r["pdf"]),
+                            "Page": r["page"],
+                            "Similarity (%)": round(r["score"] * 100, 2),
+                            "Confidence (%)": round(r["confidence"] * 100, 1),
+                        })
+
+                    df = pd.DataFrame(table_rows)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+                # ======================================================
+                # 📄 DETAILED RESULTS (WITH PARAGRAPH EXPLAINABILITY)
+                # ======================================================
                 for r in results:
                     filename = os.path.basename(r["pdf"])
 
@@ -825,13 +870,13 @@ with tabs[5]:
                         """
                     )
 
-                    # -------- EXPLAINABILITY (PARAGRAPH) --------
+                    # -------- PARAGRAPH-LEVEL EXPLAINABILITY --------
                     if r.get("matched_paragraph"):
-                        st.markdown("**Matched paragraph:**")
+                        st.markdown("**Most semantically similar paragraph:**")
                         st.info(r["matched_paragraph"])
                     else:
                         st.caption("No paragraph-level match available.")
-                    # -------------------------------------------
+                    # ------------------------------------------------
 
                     with open(r["pdf"], "rb") as f:
                         pdf_data = f.read()
