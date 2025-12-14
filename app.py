@@ -685,6 +685,7 @@ with tabs[3]:
 # ======================================================
 with tabs[4]:
     st.subheader("🖼️ Image-to-Image Search")
+
     uploaded_file = st.file_uploader(
         "📤 Upload an image",
         type=["jpg", "jpeg", "png"]
@@ -700,23 +701,79 @@ with tabs[4]:
         st.image(query_image_path, caption="📸 Uploaded Image", width=250)
 
         if st.button("🔍 Run Image Search"):
-            st.info("Analyzing and comparing image...")
+            st.info("🔍 Analyzing and comparing image...")
+
+            # -------------------------------
+            # CORE SEARCH (NO CHANGES)
+            # -------------------------------
             start = time.time()
             results = searcher.search_by_image(query_image_path, top_k=top_k)
             elapsed = time.time() - start
 
             if not results:
-                st.warning("No similar images found.")
+                st.warning("❌ No similar images found.")
             else:
                 st.success(f"✅ Found {len(results)} similar images in {elapsed:.2f}s")
 
-                cols = st.columns(len(results))  # ✅ FIX
+                # ======================================================
+                # 🔎 TRUE INDEX SIZE FROM SQLITE
+                # ======================================================
+                conn = sqlite3.connect(DB_PATH)
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM images")
+                indexed_items = cur.fetchone()[0]
+                conn.close()
+
+                # ======================================================
+                # 🧠 EXPLAINABILITY: COMPUTATIONAL SUMMARY
+                # ======================================================
+                summary = estimate_computational_summary(
+                    query=f"IMAGE: {os.path.basename(query_image_path)}",
+                    results=results,
+                    indexed_items=indexed_items,
+                    embedding_dim=512,
+                    compared_items=indexed_items,   # brute-force over archive
+                    top_k=top_k
+                )
+
+                with st.expander("🧠 Computational Summary (Explainability)", expanded=False):
+                    st.text("\n".join(summary_to_lines(summary)))
+
+                    st.text("\nCosine similarity formula used:\n")
+                    st.code(
+                        "sim(q_img, i) = (v_q · v_i) / (||v_q|| · ||v_i||)\n"
+                        "v_q = ImageEncoder(query_image)\n"
+                        "v_i = ImageEncoder(image_i)",
+                        language="text"
+                    )
+
+                    st.text(
+                        "\nNote on confidence values:\n"
+                        "- Confidence is a relative measure based on similarity distribution.\n"
+                        "- When few results are returned, confidence may reach high values.\n"
+                        "- Confidence does NOT affect ranking."
+                    )
+
+                # ======================================================
+                # 📊 NUMERICAL RESULTS (TOP-K)
+                # ======================================================
+                with st.expander("📊 Numerical Results (Top-K)", expanded=False):
+                    rows = build_results_table(results)
+                    df = pd.DataFrame(rows)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+
+                # ======================================================
+                # 🖼️ VISUAL RESULTS
+                # ======================================================
+                cols = st.columns(len(results))
 
                 for idx, r in enumerate(results):
-                    caption = f"Similarity: {r['score'] * 100:.2f}%"
+                    score = r["score"]
+                    confidence = r.get("confidence", None)
 
-                    if r.get("confidence") is not None:
-                        caption += f"\nConfidence: {r['confidence'] * 100:.1f}%"
+                    caption = f"Similarity: {score * 100:.2f}%"
+                    if confidence is not None:
+                        caption += f"\nConfidence: {confidence * 100:.1f}%"
 
                     caption += "\nReason: visual embedding similarity"
 
