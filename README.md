@@ -135,7 +135,7 @@ Then open:
 
 ## 📊 Current Dataset Composition
 
-- **Images**: COCO subset + curated generic images + your custom images (target ~100 images)
+- **Images**: your custom images (target ~100 images)
 - **PDFs**: Academic and technical documents
 - **Audio**: WAV files with transcripts & emotion labels
 
