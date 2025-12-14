@@ -1,5 +1,3 @@
-/data/query/
-/data/query_images/
 models/
 *.pt
 *.bin
