@@ -1045,8 +1045,7 @@ with tabs[7]:
         on_change=trigger_audio_search
     )
 
-    run_btn = st.button("Run Audio Search", use_container_width=True)
-    if run_btn:
+    if st.button("Run Audio Search", use_container_width=True):
         st.session_state.run_audio_search = True
 
     # -------------------------------
@@ -1054,48 +1053,122 @@ with tabs[7]:
     # -------------------------------
     if st.session_state.run_audio_search:
 
+        results = []                 # ✅ ALWAYS defined
+        emotion_only = False         # ✅ ALWAYS defined
+
         if not query.strip():
             st.warning("⚠️ Please enter a query.")
         else:
             with st.spinner("Searching audio…"):
 
-                # emotion-only shortcut
                 emotion_keywords = {
                     "happy", "sad", "angry", "fearful",
                     "disgust", "neutral",
                     "χαρά", "λύπη", "θυμός", "φόβος", "αηδία"
                 }
 
-                if query.lower().strip() in emotion_keywords:
-                    results = audio.search_by_emotion(query, top_k=top_k)
+                q_norm = query.lower().strip()
+                emotion_only = q_norm in emotion_keywords
+
+                if emotion_only:
+                    results = audio.search_by_emotion(query, top_k=top_k) or []
                 else:
-                    results = audio.search_semantic(query, top_k=top_k)
+                    results = audio.search_semantic(query, top_k=top_k) or []
 
         if not results:
             st.error("❌ No matching audio found.")
         else:
             st.success(f"✅ Found {len(results)} audio matches!")
 
+            # ======================================================
+            # 🧠 COMPUTATIONAL SUMMARY (EXPLAINABILITY)
+            # ======================================================
+            # Try to infer total indexed audio items without assuming DB tables
+            indexed_items = None
+            for attr in ("num_items", "n_items", "total_items", "index_size", "audio_count"):
+                if hasattr(audio, attr):
+                    try:
+                        indexed_items = int(getattr(audio, attr))
+                        break
+                    except Exception:
+                        pass
+
+            # Fallback: at least show we computed over something (safe)
+            compared_items = indexed_items if indexed_items is not None else len(results)
+
+            # Embedding dim for transcript text embeddings (keep 512 as per your system)
+            embedding_dim = 512
+
+            summary = estimate_computational_summary(
+                query=f"Audio query: {query}",
+                results=results,
+                indexed_items=(indexed_items if indexed_items is not None else len(results)),
+                embedding_dim=embedding_dim,
+                compared_items=compared_items,
+                top_k=top_k
+            )
+
+            with st.expander("🧠 Computational Summary (Explainability)", expanded=False):
+                st.text("\n".join(summary_to_lines(summary)))
+
+                if emotion_only:
+                    st.text("\nSearch mode: Emotion-only classification\n")
+                else:
+                    st.text("\nSearch mode: Semantic text → transcript similarity\n")
+
+                st.code(
+                    "Semantic mode:\n"
+                    "sim(q, a_i) = cosine(TextEncoder(query), TextEncoder(transcript_i))\n\n"
+                    "Emotion mode:\n"
+                    "emotion_i = argmax EmotionClassifier(audio_i)",
+                    language="text"
+                )
+
+            # ======================================================
+            # 📊 NUMERICAL RESULTS (TOP-K)
+            # ======================================================
+            with st.expander("📊 Numerical Results (Top-K)", expanded=False):
+                rows = []
+                for i, r in enumerate(results, start=1):
+                    audio_path = r.get("audio_path", "")
+                    rows.append({
+                        "Rank": i,
+                        "Audio": Path(audio_path).name if audio_path else "n/a",
+                        "Similarity": round(float(r.get("similarity", 0) or 0), 3),
+                        "Emotion": r.get("emotion", "unknown"),
+                        "Language": r.get("language", "n/a"),
+                    })
+
+                df = pd.DataFrame(rows)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # ======================================================
+            # 🎧 DETAILED RESULTS
+            # ======================================================
             for r in results:
-                full_path = Path(r["audio_path"]).as_posix()
-                fname = Path(full_path).name
+                audio_path = r.get("audio_path", "")
+                full_path = Path(audio_path).as_posix() if audio_path else ""
+                fname = Path(full_path).name if full_path else "unknown.wav"
 
                 st.markdown(f"""
                 ### 🎵 {fname}
-                🔊 **Similarity:** `{r.get("similarity", 0):.3f}`  
+                🔊 **Similarity:** `{float(r.get("similarity", 0) or 0):.3f}`  
                 🎭 **Emotion:** `{r.get("emotion", "unknown")}`  
                 🌐 **Query Language:** `{r.get("language", "n/a")}`
                 """)
 
                 # AUDIO PLAYER
-                try:
-                    with open(full_path, "rb") as f:
-                        st.audio(f.read(), format="audio/wav")
-                    st.caption(full_path)
-                except Exception as e:
-                    st.error(f"Could not load audio: {e}")
+                if full_path:
+                    try:
+                        with open(full_path, "rb") as f:
+                            st.audio(f.read(), format="audio/wav")
+                        st.caption(full_path)
+                    except Exception as e:
+                        st.error(f"Could not load audio: {e}")
+                else:
+                    st.warning("⚠️ Missing audio_path in result.")
 
-                # EMOTION PROBS
+                # EMOTION PROBABILITIES (EXPLAINABILITY)
                 if r.get("emotion_probs"):
                     with st.expander("🎭 Emotion probabilities"):
                         st.json(r["emotion_probs"])
@@ -1103,3 +1176,4 @@ with tabs[7]:
                 st.markdown("---")
 
     st.session_state.run_audio_search = False
+
