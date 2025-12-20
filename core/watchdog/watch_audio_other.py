@@ -89,10 +89,7 @@ class AudioOtherHandler(FileSystemEventHandler):
 
         print("🔹 Loading EmotionModelV5...")
         self.emotion_model = EmotionModelV5(
-            ckpt_path=str(
-                self.base_dir / "models/best_model_audio_emotion_v5.pt"
-            ),
-            device=self.device
+            ckpt_path=str(self.base_dir / "models/best_model_audio_emotion_v5.pt")
         )
 
         print("🔹 Loading M-CLIP text encoder...")
@@ -109,7 +106,7 @@ class AudioOtherHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.lower().endswith(".wav"):
+        if not event.src_path.lower().endswith((".wav", ".mp3")):
             return
 
         rel_path = make_relative(event.src_path)
@@ -126,7 +123,7 @@ class AudioOtherHandler(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.lower().endswith(".wav"):
+        if not event.src_path.lower().endswith((".wav", ".mp3")):
             return
 
         full_path = event.src_path.replace("\\", "/")

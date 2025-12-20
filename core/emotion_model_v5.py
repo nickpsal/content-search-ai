@@ -70,7 +70,7 @@ class EmotionModelV5:
             audio = audio.mean(axis=1)
 
         if sr != 16000:
-            audio = librosa.resample(audio, sr, 16000)
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 
         # ----------------------------------------
         # 2️⃣ Whisper preprocessing
