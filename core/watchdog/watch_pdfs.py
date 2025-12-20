@@ -12,14 +12,10 @@ from core.pdf_search import PDFSearcher
 # ============================================
 # 🔧 Helper – Convert absolute → relative
 # ============================================
-def make_relative(full_path: str) -> str:
+def make_relative(full_path: str) -> str | None:
     full_path = full_path.replace("\\", "/")
-
     if "/data/" in full_path:
-        rel = full_path.split("/data/")[1]
-        return f"data/{rel}"
-
-    print("❌ Could not compute relative path for:", full_path)
+        return "data/" + full_path.split("/data/")[1]
     return None
 
 
@@ -29,37 +25,108 @@ def make_relative(full_path: str) -> str:
 class PDFHandler(FileSystemEventHandler):
 
     def __init__(self):
-        # ===================================
-        # 📌 CORRECT BASE DIR
-        # core/watchdog/watch_pdfs.py
-        # parents[2] → content-search-ai
-        # ===================================
         self.base_dir = Path(__file__).resolve().parents[2]
-
-        print("📌 PDF Watchdog BASE DIR =", self.base_dir)
-
-        # -------------------------
-        # DB
-        # -------------------------
         self.db_path = self.base_dir / "content_search_ai.db"
-        print("📌 DB Path =", self.db_path)
         self.db = DatabaseHelper(str(self.db_path))
 
-        # -------------------------
-        # PDF Search Model
-        # -------------------------
         model_path = self.base_dir / "models/mclip_finetuned_coco_ready"
-        print("📌 Loading PDF M-CLIP model from:", model_path)
-
         self.pdf_searcher = PDFSearcher(
             db_path=str(self.db_path),
             model_path=str(model_path)
         )
 
-        # -------------------------
-        # FOLDER TO WATCH
-        # -------------------------
         self.watch_dir = str(self.base_dir / "data/pdfs")
+
+        # 🧠 debounce state
+        self._last_processed: dict[str, float] = {}
+
+        print("📄 PDF Watchdog ready")
+        print("📌 Watching:", self.watch_dir)
+
+
+    # -------------------------------------------------
+    # ⏳ Wait until file is stable & readable
+    # -------------------------------------------------
+    def _wait_for_ready(self, path: str, timeout: int = 20) -> bool:
+        last_size = -1
+        start = time.time()
+
+        while time.time() - start < timeout:
+            try:
+                size = Path(path).stat().st_size
+                if size == last_size and size > 0:
+                    return True
+                last_size = size
+            except FileNotFoundError:
+                return False
+
+            time.sleep(0.5)
+
+        return False
+
+
+    # -------------------------------------------------
+    # 🆕 CREATE / MODIFY (same logic)
+    # -------------------------------------------------
+    def on_created(self, event):
+        self._handle_event(event)
+
+    def on_modified(self, event):
+        self._handle_event(event)
+
+
+    # -------------------------------------------------
+    # 🧠 Unified handler
+    # -------------------------------------------------
+    def _handle_event(self, event):
+        if event.is_directory:
+            return
+
+        if not event.src_path.lower().endswith(".pdf"):
+            return
+
+        full_path = event.src_path.replace("\\", "/")
+        rel_path = make_relative(full_path)
+        if not rel_path:
+            return
+
+        now = time.time()
+
+        # 🛑 Debounce (avoid duplicate triggers)
+        last = self._last_processed.get(full_path, 0)
+        if now - last < 2:
+            return
+        self._last_processed[full_path] = now
+
+        print(f"📄 PDF change detected → {rel_path}")
+
+        # ⏳ Wait for full write
+        if not self._wait_for_ready(full_path):
+            print(f"❌ PDF not ready (timeout) → {rel_path}")
+            return
+
+        try:
+            # 🧹 Clean old pages first
+            self.db.delete_pdf(rel_path)
+
+            pages = self.pdf_searcher.get_pdf_pages_embeddings(full_path)
+            if not pages:
+                print(f"⚠️ No valid pages → {rel_path}")
+                return
+
+            for page_num, emb, text in pages:
+                emb_bytes = emb.astype(np.float32).tobytes()
+                self.db.insert_pdf_page(
+                    rel_path,
+                    page_num,
+                    text,
+                    emb_bytes
+                )
+
+            print(f"💾 Indexed {len(pages)} pages → {rel_path}")
+
+        except Exception as e:
+            print(f"❌ PDF processing error {rel_path}: {e}")
 
 
     # -------------------------------------------------
@@ -77,43 +144,6 @@ class PDFHandler(FileSystemEventHandler):
         self.db.delete_pdf(rel_path)
 
 
-    # -------------------------------------------------
-    # 🆕 CREATE
-    # -------------------------------------------------
-    def on_created(self, event):
-        if event.is_directory:
-            return
-
-        full_path = event.src_path.replace("\\", "/")
-        rel_path = make_relative(full_path)
-        if not rel_path:
-            return
-
-        print(f"🆕 PDF Created → {rel_path}")
-
-        try:
-            pages = self.pdf_searcher.get_pdf_pages_embeddings(full_path)
-
-            if not pages:
-                print("⚠️ No valid pages extracted.")
-                return
-
-            for page_num, emb, text in pages:
-                emb_bytes = emb.astype(np.float32).tobytes()
-
-                self.db.insert_pdf_page(
-                    rel_path,
-                    page_num,
-                    text,
-                    emb_bytes
-                )
-
-            print(f"💾 Inserted {len(pages)} pages → {rel_path}")
-
-        except Exception as e:
-            print(f"❌ Error processing PDF {full_path}: {e}")
-
-
 # ============================================
 # 🚀 START WATCHDOG
 # ============================================
@@ -121,11 +151,7 @@ def start_watch():
     handler = PDFHandler()
     observer = Observer()
 
-    watch_dir = handler.watch_dir
-    print("\n📄 Watching PDF folder:")
-    print(watch_dir)
-
-    observer.schedule(handler, watch_dir, recursive=False)
+    observer.schedule(handler, handler.watch_dir, recursive=False)
     observer.start()
 
     try:
