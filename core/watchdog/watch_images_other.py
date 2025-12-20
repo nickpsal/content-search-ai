@@ -12,6 +12,16 @@ import torch
 from core.image_search import ImageSearcher
 from core.db.database_helper import DatabaseHelper
 
+def wait_until_file_ready(path, retries=10, delay=0.5):
+    for _ in range(retries):
+        try:
+            with Image.open(path) as img:
+                img.verify()
+            return True
+        except Exception:
+            time.sleep(delay)
+    return False
+
 
 # ============================================
 # 🔧 Helper: Get correct relative DB path
@@ -89,7 +99,12 @@ class ImageFolderHandler(FileSystemEventHandler):
 
         try:
             # Load + resize image
+            if not wait_until_file_ready(full_path):
+                print(f"⚠️ File still locked, skipping: {full_path}")
+                return
+
             img = Image.open(full_path).convert("RGB")
+
             img_tensor = self.preprocess(img).unsqueeze(0).to(self.device)
 
             # Extract embedding (normalized)

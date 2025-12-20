@@ -6,6 +6,8 @@ from core import ImageSearcher, PDFSearcher, Model, AudioSearcher
 import psutil
 from core.db.database_helper import DatabaseHelper
 import os
+import sqlite3
+import pandas as pd
 from core.explainability import (
     estimate_computational_summary,
     summary_to_lines,
@@ -16,6 +18,17 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "content_search_ai.db"
 
 db = DatabaseHelper(str(DB_PATH))
+
+#lazy loading
+def get_image_searcher():
+    if "image_searcher" not in st.session_state:
+        st.session_state.image_searcher = ImageSearcher()
+    return st.session_state.image_searcher
+
+def get_audio_searcher():
+    if "audio_searcher" not in st.session_state:
+        st.session_state.audio_searcher = AudioSearcher()
+    return st.session_state.audio_searcher
 
 def get_watchdog(db, name):
     row = db.get_watchdog_status(name)
@@ -235,10 +248,10 @@ st.markdown(f"""
 DATA_DIR = "./data"
 model = Model()
 model.download_model()
-searcher = ImageSearcher()
-audio = AudioSearcher()
 
-pdf = PDFSearcher()
+# searcher = ImageSearcher()
+# audio = AudioSearcher()
+# pdf = PDFSearcher()
 # ======================================================
 # 🧭 TABS SETUP
 # ======================================================
@@ -550,9 +563,6 @@ with tabs[2]:
 # ======================================================
 # 💬 TEXT → IMAGE SEARCH
 # ======================================================
-import sqlite3
-import pandas as pd
-
 with tabs[3]:
     st.subheader("💬 Text-to-Image Search")
 
@@ -589,7 +599,8 @@ with tabs[3]:
             # -------------------------------
             # CORE SEARCH (NO CHANGES)
             # -------------------------------
-            results = searcher.search(query, top_k=top_k)
+            text_to_image_searcher = get_image_searcher()
+            results = text_to_image_searcher.search(query, top_k=top_k)
 
             if not results:
                 st.warning("❌ No results found.")
@@ -705,7 +716,8 @@ with tabs[4]:
             # CORE SEARCH (NO CHANGES)
             # -------------------------------
             start = time.time()
-            results = searcher.search_by_image(query_image_path, top_k=top_k)
+            image_to_image_searcher = get_image_searcher()
+            results = image_to_image_searcher.search_by_image(query_image_path, top_k=top_k)
             elapsed = time.time() - start
 
             if not results:
@@ -798,10 +810,10 @@ with tabs[5]:
         else:
             st.info(f"🔍 Searching for: '{query_text}' ...")
 
-            searcher = PDFSearcher(db_path="content_search_ai.db")
+            text_to_pdf_searcher = PDFSearcher(db_path="content_search_ai.db")
 
             with st.spinner("Processing and comparing PDFs..."):
-                results = searcher.search_by_text(
+                results = text_to_pdf_searcher.search_by_text(
                     query_text=query_text,
                     top_k=top_k
                 )
@@ -917,10 +929,10 @@ with tabs[6]:
         st.success(f"✅ Uploaded: {uploaded_pdf.name}")
         st.info("🔍 Analyzing document similarity...")
 
-        searcher = PDFSearcher(db_path="content_search_ai.db")
+        php_to_pdf_searcher = PDFSearcher(db_path="content_search_ai.db")
 
         with st.spinner("Processing and comparing PDFs..."):
-            results = searcher.search_similar_pdfs(
+            results = php_to_pdf_searcher.search_similar_pdfs(
                 query_pdf_path=query_path,
                 top_k=top_k
             )
@@ -1023,6 +1035,8 @@ with tabs[6]:
 with tabs[7]:
     st.subheader("🎧 Text-to-Audio Search (Semantic + Emotion)")
 
+    audio_searcher = get_audio_searcher()
+
     st.markdown("""
     #### 🎨 Color Guide
     - 🎭 Emotion color shows detected dominant emotion
@@ -1071,9 +1085,9 @@ with tabs[7]:
                 emotion_only = q_norm in emotion_keywords
 
                 if emotion_only:
-                    results = audio.search_by_emotion(query, top_k=top_k) or []
+                    results = audio_searcher.search_by_emotion(query, top_k=top_k) or []
                 else:
-                    results = audio.search_semantic(query, top_k=top_k) or []
+                    results = audio_searcher.search_semantic(query, top_k=top_k) or []
 
         if not results:
             st.error("❌ No matching audio found.")
@@ -1086,9 +1100,9 @@ with tabs[7]:
             # Try to infer total indexed audio items without assuming DB tables
             indexed_items = None
             for attr in ("num_items", "n_items", "total_items", "index_size", "audio_count"):
-                if hasattr(audio, attr):
+                if hasattr(audio_searcher, attr):
                     try:
-                        indexed_items = int(getattr(audio, attr))
+                        indexed_items = int(getattr(audio_searcher, attr))
                         break
                     except Exception:
                         pass
