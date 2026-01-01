@@ -3,6 +3,7 @@ import sys
 import signal
 import subprocess
 from multiprocessing import Process
+from core import Model
 
 from core.watchdog.watch_images_other import start_watch as start_watch_images
 from core.watchdog.watch_pdfs import start_watch as start_watch_pdfs
@@ -38,6 +39,9 @@ signal.signal(signal.SIGTERM, shutdown)
 # MAIN
 # ============================
 if __name__ == "__main__":
+
+    model = Model()
+    model.download_model();
 
     print("=======================================")
     print("🔄 Running initial filesystem sync...")
